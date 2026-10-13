@@ -796,7 +796,34 @@ def _find_pos(data: dict) -> int | None:
     return None
 
 
+def _num(data: dict, *keys: str) -> float | None:
+    """Premier champ numérique trouvé parmi `keys` (les noms exacts varient selon la version de sockseek)."""
+    low = {k.lower(): v for k, v in data.items()}
+    for k in keys:
+        v = low.get(k.lower())
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            return float(v)
+    return None
+
+
+_SAMPLES: dict[str, int] = {}
+
+
+def _sample(ev: dict) -> None:
+    """Garde quelques évènements sockseek de chaque type (aide à affiner la progression)."""
+    kind = str(ev.get("type"))
+    if _SAMPLES.get(kind, 0) >= 3:
+        return
+    _SAMPLES[kind] = _SAMPLES.get(kind, 0) + 1
+    try:
+        with (APP_DIR / "sockseek-events.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
 def _on_event(ev: dict) -> None:
+    _sample(ev)
     kind, data = ev.get("type"), ev.get("data") or {}
     pos = _find_pos(data)
     if pos is None:
@@ -809,6 +836,18 @@ def _on_event(ev: dict) -> None:
         if S.status.get(pos) in ("queued", "search"):
             S.status[pos] = "dl"
         d.update(user=data.get("username"), ext=data.get("extension"), size=data.get("size"))
+    elif kind == "download_progress":
+        if S.status.get(pos) in ("queued", "search"):
+            S.status[pos] = "dl"
+        got = _num(data, "bytesTransferred", "bytesDownloaded", "transferred", "downloaded", "bytes")
+        size = _num(data, "totalBytes", "size", "fileSize", "total")
+        pct = _num(data, "percent", "percentage", "progress", "progressPercent", "progressPercentage")
+        if got is not None:
+            d["got"] = max(got, d.get("got", 0))
+        if size:
+            d["size"] = size
+        if pct is not None and not (got is not None and size):
+            d["pct"] = pct / 100 if pct > 1 else pct
     elif kind == "track_state" and data.get("terminalOutcome") not in (None, "None"):
         d.update({k: v for k, v in {
             "outcome": data.get("terminalOutcome"), "reason": data.get("failureReason"),
@@ -887,14 +926,21 @@ def _watch_staging(parent: Path) -> None:
                 if d.stat().st_mtime < S.started - 5:
                     continue
                 for f in d.rglob("*"):
-                    if f.suffix.lower() in p2s.AUDIO_EXTS and f.stem.isdigit():
-                        i = int(f.stem) - 1
-                        with S.lock:
-                            if 0 <= i < len(S.todo) and S.status.get(S.todo[i]) in ("queued", "search"):
-                                S.status[S.todo[i]] = "dl"
+                    m = re.match(r"(\d+)\.", f.name)      # 3.flac, ou 3.flac.incomplete pendant le transfert
+                    if not m or not f.is_file():
+                        continue
+                    i = int(m.group(1)) - 1
+                    size = f.stat().st_size
+                    with S.lock:
+                        if 0 <= i < len(S.todo):
+                            pos = S.todo[i]
+                            if S.status.get(pos) in ("queued", "search"):
+                                S.status[pos] = "dl"
+                            det = S.details.setdefault(pos, {})
+                            det["got"] = max(size, det.get("got", 0))
         except OSError:
             pass
-        time.sleep(1)
+        time.sleep(0.7)
 
 
 def stop_job() -> dict:
@@ -912,6 +958,44 @@ def stop_job() -> dict:
     return {"ok": True}
 
 
+def job_progress() -> dict:
+    """Deux avancements : la recherche (morceaux déjà cherchés) et le global (recherche + transferts + rangement)."""
+    todo = S.todo or [p for p, st in S.status.items() if st not in ("skip", "lib")]
+    if not todo:
+        return {"search": 0, "searching": 0, "searched": 0, "total": 0, "global": 0, "got": 0, "size": 0, "downloaded": 0}
+    searched = searching = downloaded = 0
+    got_b = size_b = 0.0
+    score = 0.0
+    for pos in todo:
+        st, d = S.status.get(pos, "queued"), S.details.get(pos) or {}
+        if st in ("ok", "miss", "stopped", "skip", "lib"):        # rangé (ou abandonné) : terminé
+            searched += 1
+            score += 1
+            downloaded += st == "ok"
+            continue
+        if d.get("outcome"):                                      # sockseek a fini ce morceau
+            searched += 1
+            done = d["outcome"] in ("Succeeded", "Success", "Completed", "Downloaded")
+            downloaded += done
+            score += 0.25 + 0.6 + (0 if done else 0.15)
+            if done and d.get("size"):
+                got_b += d["size"]; size_b += d["size"]
+            continue
+        if st == "dl" or d.get("user"):                           # recherche finie, transfert en cours
+            searched += 1
+            size = d.get("size") or 0
+            frac = min(d.get("got", 0) / size, 1) if size else d.get("pct", 0.1)
+            if size:
+                got_b += min(d.get("got", 0), size); size_b += size
+            score += 0.25 + 0.6 * frac
+        elif st == "search":
+            searching += 1
+            score += 0.08
+    n = len(todo)
+    return {"search": searched / n, "searching": searching, "searched": searched, "total": n,
+            "global": score / n, "got": got_b, "size": size_b, "downloaded": downloaded}
+
+
 def job_status(since: int) -> dict:
     with S.lock:
         counts = {}
@@ -924,7 +1008,7 @@ def job_status(since: int) -> dict:
             "lines": S.lines[since:], "next": len(S.lines), "exports": S.exports,
             "load_id": S.load_id, "job_id": S.job_id, "name": S.name,
             "sync": {k: SYNC[k] for k in ("active", "index", "total", "current", "added")},
-            "status": S.status, "counts": counts, "details": S.details,
+            "status": S.status, "counts": counts, "details": S.details, "progress": job_progress(),
             "missing_csv": str(missing) if missing and missing.exists() and not S.running else "",
         }
 

@@ -128,6 +128,13 @@ details .opts { margin-bottom: 4px; }
 .prog-head span { font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
 .bar { height: 16px; border: 2px solid var(--line); background: var(--paper); overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s; }
+.bars { display: grid; gap: 12px; }
+.pb { display: grid; grid-template-columns: 92px minmax(0, 1fr) 150px; gap: 14px; align-items: center; }
+.pb-lbl { font: 500 11.5px var(--mono); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.pb-val { font: 500 12px var(--mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar.thin { height: 10px; }
+.bar.thin i { background: var(--text); }
+@media (max-width: 700px) { .pb { grid-template-columns: 1fr auto; } .pb .bar { grid-column: 1 / -1; grid-row: 2; } }
 .bar.indet i { width: 30% !important; animation: slide 1.4s ease-in-out infinite; }
 @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
 .last { color: var(--muted); font: 12px var(--mono); margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -468,7 +475,10 @@ body.has-player main { padding-bottom: 130px; }
     <section id="step-run" class="card hidden">
       <div id="running">
         <div class="prog-head"><b id="phase">Recherche sur Soulseek…</b><span id="count"></span></div>
-        <div id="bar" class="bar indet"><i></i></div>
+        <div class="bars">
+          <div class="pb"><span class="pb-lbl">Recherche</span><div id="bar-search" class="bar thin indet"><i></i></div><span class="pb-val" id="val-search"></span></div>
+          <div class="pb"><span class="pb-lbl">Global</span><div id="bar" class="bar indet"><i></i></div><span class="pb-val" id="val-global"></span></div>
+        </div>
         <div id="last" class="last"></div>
         <div style="display:flex;justify-content:space-between;margin-top:14px">
           <button id="toggle-log" class="link" style="padding-left:0">Afficher le journal</button>
@@ -1306,14 +1316,32 @@ function launched(r) {
 $("#go").onclick = () => start();
 $("#stop").onclick = async () => { $("#stop").disabled = true; await api("/api/stop", {}); };
 
-let lastStatus = "", syncState = {}, wasSync = false;
+let lastStatus = "", syncState = {}, wasSync = false, lastBytes = null;
+function setBar(bar, frac, indet) {
+  bar.classList.toggle("indet", !!indet);
+  bar.querySelector("i").style.width = Math.round(Math.min(frac || 0, 1) * 100) + "%";
+}
+const mb = b => (b / 1048576).toLocaleString("fr-FR", { maximumFractionDigits: b < 10485760 ? 1 : 0 }) + " Mo";
+function speedText(pr) {
+  // débit lissé sur les dernières secondes, calculé à partir des octets reçus
+  const now = Date.now(), got = pr.got || 0;
+  let rate = 0;
+  if (lastBytes && got >= lastBytes.got && now > lastBytes.t) {
+    rate = (got - lastBytes.got) / ((now - lastBytes.t) / 1000);
+    lastBytes.rate = lastBytes.rate == null ? rate : lastBytes.rate * 0.7 + rate * 0.3;
+    rate = lastBytes.rate;
+  }
+  lastBytes = { got, t: now, rate: lastBytes ? lastBytes.rate : null };
+  if (!got) return "";
+  return mb(got) + (pr.size > got ? ` / ${mb(pr.size)}` : "") + (rate > 20480 ? ` · ${mb(rate)}/s` : "");
+}
 async function poll() {
   clearTimeout(timer);
   let s = await api("/api/status?since=" + since);
   if (s.load_id !== loadId || s.job_id !== jobId) {
     // nouvelle playlist (mise à jour des suivies) ou nouveau lancement : on se recale
     if (s.load_id !== loadId) { const c = await api("/api/current"); tracks = c.tracks; plName = c.name; cur = c; loadId = c.load_id; $("#name").value = plName; renderFollowBtn(); updateMeta(); }
-    jobId = s.job_id; since = 0; $("#log").textContent = ""; lastStatus = "";
+    jobId = s.job_id; since = 0; $("#log").textContent = ""; lastStatus = ""; lastBytes = null;
     s = await api("/api/status?since=0");
   }
   syncState = s.sync;
@@ -1327,16 +1355,16 @@ async function poll() {
   details = s.details || {};
   const key = JSON.stringify([s.status, details]);
   if (key !== lastStatus) { lastStatus = key; renderList(s.status); }
-  const c = s.counts, total = Object.keys(s.status).length;
-  const todo = total - (c.skip || 0), done = (c.ok || 0) + (c.miss || 0), dl = c.dl || 0;
-  const searched = Object.values(details).filter(d => d.outcome).length;
-  const posting = done > 0;
-  $("#phase").textContent = (s.sync.active ? `Mise à jour ${s.sync.index} / ${s.sync.total} · ` : "") + (posting ? "Renommage, tags et jaquettes…" : "Recherche et téléchargement sur Soulseek…");
-  const got = Math.max(dl, searched);
-  $("#count").textContent = posting ? `${done} / ${todo}` : (got ? `${got} / ${todo} traités` : `${todo} à chercher`);
-  const bar = $("#bar"), frac = posting ? done / todo : got / Math.max(todo, 1);
-  bar.classList.toggle("indet", !posting && !got);
-  bar.querySelector("i").style.width = Math.round(frac * 100) + "%";
+  const c = s.counts, done = (c.ok || 0) + (c.miss || 0);
+  const pr = s.progress || {}, posting = done > 0;
+  const allSearched = pr.total && pr.searched >= pr.total;
+  $("#phase").textContent = (s.sync.active ? `Mise à jour ${s.sync.index} / ${s.sync.total} · ` : "")
+    + (posting ? "Renommage, tags et jaquettes…" : allSearched ? "Téléchargement des derniers fichiers…" : "Recherche et téléchargement sur Soulseek…");
+  $("#count").textContent = speedText(pr);
+  setBar($("#bar-search"), pr.search, !pr.searched && !pr.searching);
+  $("#val-search").textContent = pr.total ? `${pr.searched} / ${pr.total} cherchés` : "";
+  setBar($("#bar"), pr.global, !pr.global);
+  $("#val-global").textContent = pr.total ? `${Math.floor((pr.global || 0) * 100)} %` + (pr.downloaded ? ` · ${pr.downloaded} reçu${pr.downloaded > 1 ? "s" : ""}` : "") : "";
   if (s.running || s.sync.active) timer = setTimeout(poll, 700);
   else {
     running = false; renderList(s.status); finish(s);
