@@ -124,3 +124,9 @@ Pour publier une version : créer un tag `v1.0`, `v1.1`… Les installateurs son
 - Windows : à l'écran bleu « Windows a protégé votre ordinateur », cliquer « Informations complémentaires » › « Exécuter quand même ».
 
 **Spotify pour les amis.** Le Client ID de l'app Spotify est dans `packaging/spotify-client-id.txt` (pas secret, connexion PKCE) : il est intégré à l'appli. Chaque ami doit être ajouté dans le tableau de bord Spotify (User Management, 5 personnes maximum). Sans ça, ils passent par Deezer ou un CSV.
+
+## Sources de playlist
+
+Spotify (connexion), Deezer (playlist publique), YouTube, SoundCloud, **Bandcamp** et CSV.
+
+Bandcamp n'a pas d'API publique : `read_bandcamp_url` lit les données embarquées dans les pages (`data-tralbum` pour un album ou un morceau, `data-blob` pour une page fan) et l'API interne `fancollection/1/{wishlist,collection}_items` pour la wishlist et la collection, qui doivent être publiques. Chaque album est déplié en ses morceaux ; sur une compilation, « Artiste - Titre » est séparé. Le bouton Bandcamp d'un morceau venu de Bandcamp pointe directement sur sa page.

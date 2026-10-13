@@ -336,6 +336,118 @@ def read_deezer_url(url: str) -> tuple[list[Track], str]:
     return tracks, name
 
 
+# Bandcamp : albums, morceaux, wishlist et collection d'un fan (pas d'API publique :
+# on lit les données que la page embarque, comme le fait le site lui-même)
+BANDCAMP_RE = re.compile(r"https?://([a-z0-9-]+\.)*bandcamp\.com(/|$)", re.I)
+_BC_UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 "
+                        "(KHTML, like Gecko) Version/17.0 Safari/605.1.15"}
+_BC_VA = re.compile(r"^(various( artists)?|va|v/a|multiple artists)$", re.I)
+
+
+def _bc_get(url: str) -> str:
+    r = requests.get(url, headers=_BC_UA, timeout=20)
+    if r.status_code == 404:
+        sys.exit("Cette page Bandcamp n'existe pas (lien mal copié ?).")
+    r.raise_for_status()
+    return r.text
+
+
+def _bc_json_attr(html: str, attr: str) -> dict:
+    from html import unescape
+    m = re.search(attr + r'="([^"]*)"', html)
+    if not m:
+        return {}
+    try:
+        return json.loads(unescape(m.group(1)))
+    except ValueError:
+        return {}
+
+
+def _bc_cover(art_id) -> str:
+    return f"https://f4.bcbits.com/img/a{int(art_id):010d}_10.jpg" if art_id else ""
+
+
+def _bc_release(url: str) -> tuple[list[Track], str]:
+    """Une page album ou morceau → ses morceaux (titre, artiste, durée, pochette)."""
+    tr = _bc_json_attr(_bc_get(url), "data-tralbum")
+    if not tr:
+        return [], ""
+    cur = tr.get("current") or {}
+    artist = tr.get("artist") or ""
+    is_track = tr.get("item_type") == "track"
+    album = "" if is_track else (cur.get("title") or "")
+    year = re.search(r"\b(19|20)\d\d\b", cur.get("release_date") or tr.get("album_release_date") or "")
+    infos = [t for t in tr.get("trackinfo") or [] if t.get("title")]
+    # Compilation : les titres sont « Artiste - Titre » quand le compte est celui du label.
+    dashed = sum(1 for t in infos if " - " in t["title"] and not t.get("artist"))
+    split = _BC_VA.match(artist.strip()) or (len(infos) > 1 and dashed * 2 > len(infos))
+    base = url.split("/album/")[0].split("/track/")[0]
+    tracks = []
+    for i, t in enumerate(infos, 1):
+        title, a = t["title"], t.get("artist") or artist
+        if split and not t.get("artist") and " - " in title:
+            a, title = (x.strip() for x in title.split(" - ", 1))
+        tracks.append(Track(
+            title=title, artists=_split_artists(a), album=album,
+            album_artist="" if is_track else artist, duration_s=int(t.get("duration") or 0),
+            uri=base + t["title_link"] if t.get("title_link") else url,
+            cover_url=_bc_cover(tr.get("art_id")), date=year.group(0) if year else "",
+            track_no=str(t.get("track_num") or ("" if is_track else i)),
+        ))
+    return tracks, (cur.get("title") or "bandcamp")
+
+
+def _bc_fan_items(page_url: str, kind: str) -> tuple[list[dict], str]:
+    """Wishlist ou collection d'un fan (doit être publique)."""
+    blob = _bc_json_attr(_bc_get(page_url), "data-blob")
+    fan = blob.get("fan_data") or {}
+    if not fan.get("fan_id"):
+        sys.exit("Profil Bandcamp introuvable : colle le lien de ta page fan (bandcamp.com/ton-pseudo/wishlist).")
+    api = os.environ.get("P2S_BANDCAMP_API", "https://bandcamp.com/api")
+    items, token = [], f"{int(time.time())}::a::"
+    while True:
+        r = requests.post(f"{api}/fancollection/1/{kind}_items",
+                          json={"fan_id": fan["fan_id"], "older_than_token": token, "count": 100},
+                          headers=_BC_UA, timeout=20)
+        data = r.json() if r.ok else {}
+        if data.get("error"):
+            break
+        items += data.get("items") or []
+        if not data.get("more_available") or not data.get("last_token") or len(items) > 5000:
+            break
+        token = data["last_token"]
+    return items, fan.get("name") or fan.get("username") or ""
+
+
+def read_bandcamp_url(url: str) -> tuple[list[Track], str]:
+    url = url.strip().split("?")[0].rstrip("/")
+    try:
+        if re.search(r"/(album|track)/", url):
+            tracks, name = _bc_release(url)
+            if not tracks:
+                sys.exit("Impossible de lire cet album Bandcamp.")
+            return tracks, name
+        m = re.match(r"https?://(?:www\.)?bandcamp\.com/([^/]+)(?:/(wishlist|collection))?$", url, re.I)
+        if not m:
+            sys.exit("Lien Bandcamp non reconnu : colle un album, un morceau, ou ta wishlist "
+                     "(bandcamp.com/ton-pseudo/wishlist).")
+        user, page = m.group(1), (m.group(2) or "collection").lower()
+        items, fan = _bc_fan_items(f"https://bandcamp.com/{user}/{page}" if page == "wishlist"
+                                   else f"https://bandcamp.com/{user}", page)
+        label = "Wishlist" if page == "wishlist" else "Collection"
+        if not items:
+            sys.exit(f"{label} Bandcamp vide ou privée : vérifie qu'elle est visible quand tu n'es pas connecté.")
+        # Chaque album de la liste est déplié en ses morceaux (plusieurs pages lues en parallèle).
+        from concurrent.futures import ThreadPoolExecutor
+        urls = [it.get("item_url") or "" for it in items if it.get("item_type") in ("album", "track")]
+        with ThreadPoolExecutor(6) as ex:
+            results = list(ex.map(lambda u: _bc_release(u)[0] if u else [], urls))
+        tracks = [t for res in results for t in res]
+        return tracks, f"{label} Bandcamp {fan or user}".strip()
+    except requests.RequestException as e:
+        sys.exit(f"Impossible de joindre Bandcamp : {e}")
+
+
 # YouTube / SoundCloud (via yt-dlp)
 YTDLP_RE = re.compile(r"https?://([a-z0-9-]+\.)*(youtube\.com|youtu\.be|soundcloud\.com|on\.soundcloud\.com)/", re.I)
 
@@ -908,6 +1020,8 @@ def main() -> None:
         tracks, src_name = read_ytdlp_url(args.source)
     elif DEEZER_RE.match(args.source):
         tracks, src_name = read_deezer_url(args.source)
+    elif BANDCAMP_RE.match(args.source):
+        tracks, src_name = read_bandcamp_url(args.source)
     else:
         p = Path(args.source).expanduser()
         if not p.is_file():

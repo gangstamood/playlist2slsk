@@ -201,7 +201,8 @@ div.cov::after { content: "♪"; display: grid; place-items: center; height: 100
 
 /* Choix de la source */
 .load-title { margin: 0 0 22px; font-size: 48px; font-weight: 900; letter-spacing: -0.045em; line-height: 0.95; }
-.sources { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.sources { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1100px) { .sources { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .src { display: grid; justify-items: start; gap: 4px; text-align: left; text-transform: none; letter-spacing: 0; background: var(--paper); color: var(--text); padding: 18px; min-height: 150px; }
 .src:hover { background: var(--soft); color: var(--text); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--brand, var(--line)); }
 .src:focus-visible { outline: 3px solid var(--brand, var(--accent)); outline-offset: 2px; }
@@ -355,6 +356,10 @@ body.has-player main { padding-bottom: 130px; }
         <button class="src" data-src="soundcloud" type="button" style="--brand:#ff5500">
           <span class="src-ico" style="background:#ff5500"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 16h10.5a3 3 0 0 0 .3-6 4.5 4.5 0 0 0-8.6-1.2M4 16v-3M6.5 16V10"/></svg></span>
           <b>SoundCloud</b><small>Playlist ou set</small>
+        </button>
+        <button class="src" data-src="bandcamp" type="button" style="--brand:#1da0c3">
+          <span class="src-ico" style="background:#1da0c3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17 9 7h11.5L15 17z" fill="#fff" stroke="none"/></svg></span>
+          <b>Bandcamp</b><small>Wishlist ou album</small>
         </button>
         <button class="src" data-src="csv" type="button" style="--brand:#2f4bff">
           <span class="src-ico" style="background:#2f4bff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h6l4 4v12H8zM14 4v4h4M10.5 13h5M10.5 16h5"/></svg></span>
@@ -860,7 +865,7 @@ drop.ondrop = e => { e.preventDefault(); e.stopPropagation(); loadSec.classList.
 async function readFile(f) { loaded(await api("/api/load", { filename: f.name, text: await f.text() })); $("#file").value = ""; }
 $("#url-go").onclick = async () => {
   const url = $("#url").value.trim(); if (!url) return;
-  $("#url-go").disabled = true; $("#url-go").textContent = /soundcloud/i.test(url) ? "Lecture…" : "…";
+  $("#url-go").disabled = true; $("#url-go").textContent = /soundcloud|bandcamp/i.test(url) ? "Lecture…" : "…";
   const r = await api("/api/load", { url });
   $("#url-go").disabled = false; $("#url-go").textContent = "Charger";
   loaded(r);
@@ -877,6 +882,8 @@ const SOURCES = {
     hint: () => "Une playlist ou un album. La playlist doit être publique (sur Deezer : ⋯ › Rendre publique). Pas besoin de compte." },
   youtube: { label: "Lien YouTube", ph: "https://www.youtube.com/playlist?list=…",
     hint: () => "Une playlist, un mix ou une vidéo seule. Les titres des vidéos sont nettoyés automatiquement (année, « HQ », nom de la chaîne…)." },
+  bandcamp: { label: "Lien Bandcamp", ph: "https://bandcamp.com/ton-pseudo/wishlist",
+    hint: () => "Ta wishlist (bandcamp.com/ton-pseudo/wishlist), ta collection (bandcamp.com/ton-pseudo), un album ou un morceau. La wishlist doit être publique. Chaque album est déplié en ses morceaux." },
   soundcloud: { label: "Lien SoundCloud", ph: "https://soundcloud.com/…/sets/…",
     hint: () => "Une playlist, un set ou un morceau. La lecture peut prendre quelques secondes." },
   csv: {},
@@ -904,7 +911,7 @@ $$(".src").forEach(b => b.onclick = () => pickSource(b.dataset.src));
 // Un lien collé d'une autre source bascule tout seul sur le bon bouton.
 $("#url").addEventListener("input", () => {
   const u = $("#url").value;
-  const guess = /deezer|dzr\.page/i.test(u) ? "deezer" : /spotify/i.test(u) ? "spotify" : /youtu/i.test(u) ? "youtube" : /soundcloud/i.test(u) ? "soundcloud" : "";
+  const guess = /deezer|dzr\.page/i.test(u) ? "deezer" : /spotify/i.test(u) ? "spotify" : /youtu/i.test(u) ? "youtube" : /soundcloud/i.test(u) ? "soundcloud" : /bandcamp\.com/i.test(u) ? "bandcamp" : "";
   if (guess && guess !== source) { const v = u; pickSource(guess); $("#url").value = v; }
 });
 // Un CSV déposé n'importe où sur l'écran de départ est accepté.
@@ -956,7 +963,7 @@ $("#follow").onclick = async () => {
   cur.followed = !cur.followed; renderFollowBtn();
   if (cur.followed) toast("Playlist suivie : retrouve-la dans l'onglet Playlists.");
 };
-const KIND = { spotify: "Spotify", deezer: "Deezer", youtube: "YouTube", soundcloud: "SoundCloud", web: "Lien" };
+const KIND = { spotify: "Spotify", deezer: "Deezer", youtube: "YouTube", soundcloud: "SoundCloud", bandcamp: "Bandcamp", web: "Lien" };
 function ago(ts) {
   if (!ts) return "jamais mise à jour";
   const m = Math.round((Date.now() / 1000 - ts) / 60);
@@ -1342,6 +1349,7 @@ $("#exportify-stop").onclick = stopExportWatch;
 
 // ---------- Bandcamp : recherche du morceau pour l'acheter ----------
 function bandcampUrl(t) {
+  if (t.bandcamp) return t.bandcamp;   // playlist venue de Bandcamp : lien direct vers le morceau
   const artist = (t.artist || "").split(/,\s*/)[0];
   const title = (t.title || "").replace(/\s*[\(\[][^\)\]]*\boriginal\s+(mix|version)\b[^\)\]]*[\)\]]/ig, "").replace(/\s+[-–]\s+original\s+(mix|version)\s*$/i, "").trim();
   return "https://bandcamp.com/search?item_type=t&q=" + encodeURIComponent(`${artist} ${title}`.trim());

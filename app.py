@@ -332,7 +332,8 @@ S = State()
 
 def track_dict(t: p2s.Track) -> dict:
     return {"n": t.position, "artist": t.artist, "title": t.title, "album": t.album,
-            "duration": t.duration_s, "cover": p2s._upgrade_scdn(t.cover_url) if t.cover_url else t.thumb}
+            "duration": t.duration_s, "cover": p2s._upgrade_scdn(t.cover_url) if t.cover_url else t.thumb,
+            "bandcamp": t.uri if "bandcamp.com/" in t.uri else ""}
 
 
 def load_source(body: dict) -> dict:
@@ -364,6 +365,8 @@ def load_source(body: dict) -> dict:
                 tracks, name = p2s.read_ytdlp_url(url)
             elif p2s.DEEZER_RE.match(url):
                 tracks, name = p2s.read_deezer_url(url)
+            elif p2s.BANDCAMP_RE.match(url):
+                tracks, name = p2s.read_bandcamp_url(url)
             else:
                 tracks, name = p2s.read_spotify_url(url, cid, sec, spotify_user_token())
         except SystemExit as e:
@@ -836,7 +839,7 @@ def find_follow(source: str) -> dict | None:
 def source_kind(url: str) -> str:
     u = url.lower()
     return "youtube" if "youtu" in u else "soundcloud" if "soundcloud" in u else "spotify" if "spotify" in u \
-        else "deezer" if "deezer" in u or "dzr." in u else "web"
+        else "deezer" if "deezer" in u or "dzr." in u else "bandcamp" if "bandcamp.com" in u else "web"
 
 
 def follow(body: dict) -> dict:

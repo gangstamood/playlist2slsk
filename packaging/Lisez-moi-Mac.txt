@@ -43,6 +43,8 @@ tags et pochette, prêts pour Traktor ou Rekordbox.
      Puis Se connecter et choisis une de tes playlists ou tes titres likés.
    • Deezer : colle le lien d'une playlist publique.
    • YouTube / SoundCloud : colle le lien.
+   • Bandcamp : colle ta wishlist (bandcamp.com/ton-pseudo/wishlist),
+     ta collection ou un album. La wishlist doit être publique.
    • CSV : pour une playlist Spotify qui n'est pas à toi, bouton Exportify.
 
    Clique sur Télécharger. Un morceau introuvable ? Clique dessus pour corriger
