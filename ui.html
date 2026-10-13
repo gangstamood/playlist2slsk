@@ -422,8 +422,8 @@ body.has-player main { padding-bottom: 130px; }
             <p class="summary" id="fmt-summary"></p>
           </div>
           <div>
-            <label class="lbl">Dossier de destination</label>
-            <div class="row">
+            <label class="lbl" id="out-lbl">Dossier de destination</label>
+            <div class="row" id="out-row">
               <input id="out" type="text" data-key="out">
               <button class="btn pick" data-target="#out">Choisir…</button>
             </div>
@@ -946,7 +946,38 @@ function updateMeta() {
   const mo = $("#mosaic"); mo.innerHTML = ""; mo.classList.toggle("one", covers.length < 4);
   (covers.length < 4 ? covers.slice(0, 1) : covers).forEach(c => mo.append(el("img", { src: c, alt: "" })));
 }
-function updateDest() { $("#dest-hint").textContent = `→ ${(settings.out || "~/Music/playlist2slsk").replace(/\/$/, "")}/${$("#name").value || plName}/`; }
+function updateDest() {
+  const h = $("#dest-hint"); h.textContent = "";
+  const own = cur && cur.dir;
+  $("#out-lbl").textContent = own ? "Dossier commun (pas utilisé pour cette playlist)" : "Dossier de destination";
+  $("#out-row").style.opacity = own ? ".45" : "";
+  const path = own ? cur.dir.replace(/\/$/, "") + "/" : `${(settings.out || "~/Music/playlist2slsk").replace(/\/$/, "")}/${$("#name").value || plName}/`;
+  h.append(`→ ${path}`, own ? " (dossier de cette playlist)" : "", el("br"));
+  const pick = el("button", { class: "link", type: "button" }, own ? "Changer le dossier de cette playlist" : "Choisir un dossier rien que pour cette playlist");
+  pick.onclick = () => chooseDir(cur.source);
+  h.append(pick);
+  if (own) {
+    const back = el("button", { class: "link", type: "button" }, "Revenir au dossier commun");
+    back.onclick = () => setDir(cur.source, "");
+    h.append(" ", back);
+  }
+}
+// Un dossier de l'ordinateur lié à une playlist : ses morceaux y vont directement.
+async function chooseDir(source) {
+  const r = await pickFolder();
+  if (r.path) return setDir(source, r.path);
+  if (r.error) toast(r.error);
+}
+async function setDir(source, path) {
+  const r = await api("/api/dir", { source, path });
+  if (r.error) return toast(r.error);
+  if (r.current && cur && source === cur.source) {
+    cur.dir = r.current.dir; details = r.current.details || {};
+    renderList(r.current.status || {}); updateMeta(); updateDest();
+  }
+  toast(path ? `Cette playlist ira dans ${path}` : "Cette playlist revient dans le dossier commun.");
+  if (!$("#view-follows").classList.contains("hidden")) { renderFollows(); renderHistory(); }
+}
 $("#limit").oninput = () => { updateMeta(); renderList({}); };
 $("#name").oninput = () => { updateMeta(); updateDest(); };
 $("#change").onclick = () => show("#step-load");
@@ -1003,6 +1034,7 @@ async function renderHistory() {
     if (h.have) parts.push(`${h.have} téléchargé${h.have > 1 ? "s" : ""}`);
     parts.push(since_(h.downloaded || h.opened));
     const meta = el("p", {}, parts.join(" · "));
+    if (h.dir) meta.append(el("br"), `Dossier : ${h.dir}`);
     const open = el("button", { class: "btn", type: "button" }, "Ouvrir");
     open.onclick = () => openHistory(h.source, open);
     const acts = el("div", { class: "acts" }, open);
@@ -1011,6 +1043,9 @@ async function renderHistory() {
       f.onclick = async () => { const res = await api("/api/follow", { source: h.source, name: h.folder || h.name }); if (res.error) return toast(res.error); renderFollows(); renderHistory(); };
       acts.append(f);
     } else if (h.followed) acts.append(el("span", { class: "hist-tag" }, "Suivie"));
+    const dirBtn = el("button", { class: "link", type: "button", title: "Ranger cette playlist dans un dossier à elle" }, "Dossier");
+    dirBtn.onclick = () => chooseDir(h.source);
+    acts.append(dirBtn);
     const rm = el("button", { class: "link", type: "button", title: "Retirer de l'historique (les fichiers restent)" }, "Retirer");
     rm.onclick = async () => { await api("/api/forget", { source: h.source }); renderHistory(); };
     acts.append(rm);
@@ -1044,6 +1079,9 @@ async function renderFollows() {
     const up = el("button", { class: "btn" }, "Mettre à jour");
     up.disabled = busy;
     up.onclick = () => sync(f.source);
+    if (f.dir) meta.append(el("br"), `Dossier : ${f.dir}`);
+    const dirBtn = el("button", { class: "link", title: f.dir ? "Changer le dossier de cette playlist" : "Ranger cette playlist dans un dossier à elle" }, "Dossier");
+    dirBtn.onclick = () => chooseDir(f.source);
     const rm = el("button", { class: "link", title: "Ne plus suivre" }, "Retirer");
     rm.onclick = async () => {
       if (!confirm(`Ne plus suivre « ${f.name} » ? Les fichiers déjà téléchargés restent en place.`)) return;
@@ -1053,7 +1091,7 @@ async function renderFollows() {
     };
     const cov = f.cover ? el("img", { class: "cov", src: f.cover, alt: "" }) : el("div", { class: "cov" });
     box.append(el("div", { class: "fl" + (r.sync.active && r.sync.current === f.name ? " busy" : "") },
-      cov, el("div", { style: "min-width:0" }, el("b", {}, f.name), meta), el("div", { class: "acts" }, up, rm)));
+      cov, el("div", { style: "min-width:0" }, el("b", {}, f.name), meta), el("div", { class: "acts" }, up, dirBtn, rm)));
   });
 }
 async function sync(source) {

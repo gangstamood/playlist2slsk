@@ -1074,6 +1074,7 @@ def main() -> None:
     ap.add_argument("-o", "--out", default="~/Music/playlist2slsk",
                     help="dossier racine (défaut : ~/Music/playlist2slsk)")
     ap.add_argument("--name", help="nom du sous-dossier (défaut : nom de la playlist / du CSV)")
+    ap.add_argument("--dest", help="dossier exact où ranger cette playlist (remplace -o et le sous-dossier --name)")
     ap.add_argument("--pattern", default="{artist} - {title}",
                     help='modèle de nom : {artist} {artist1} {title} {album} {year} {n}. '
                          'Ex. "{n} - {artist} - {title}" ou "{album}/{artist} - {title}"')
@@ -1144,7 +1145,7 @@ def main() -> None:
     width = max(2, len(str(len(tracks))))
     only = {int(x) for x in re.findall(r"\d+", args.only or "")}
 
-    dest = Path(args.out).expanduser() / safe_name(args.name or src_name)
+    dest = Path(args.dest).expanduser() if args.dest else Path(args.out).expanduser() / safe_name(args.name or src_name)
     print(f"▸ {len(tracks)} morceaux · destination : {dest}")
 
     # 2. Ce qui est déjà là : dans le dossier (relance après interruption) ou dans la bibliothèque

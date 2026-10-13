@@ -47,6 +47,7 @@ SETTINGS = APP_DIR / "settings.json"
 EDITS = APP_DIR / "edits.json"           # corrections manuelles {source: {clé: {artist, title}}}
 FOLLOWS = APP_DIR / "follows.json"       # playlists suivies, mises à jour à la demande
 HISTORY = APP_DIR / "history.json"       # playlists déjà chargées, les plus récentes d'abord
+DIRS = APP_DIR / "dirs.json"             # dossier choisi pour une playlist précise (source → chemin)
 SPOTIFY_TOKEN = APP_DIR / "spotify.json"  # connexion Spotify (jetons OAuth), lisible par toi seul
 PORT = int(os.environ.get("P2S_PORT", "8765"))
 DOWNLOADS = Path(os.environ.get("P2S_DOWNLOADS", str(Path.home() / "Downloads")))
@@ -401,7 +402,7 @@ def _finish_load(tracks: list, name: str, source: str) -> dict:
         t.position = i
     h = find_history(source) or {}
     folder = (find_follow(source) or {}).get("name") or h.get("folder") or p2s.safe_name(name)
-    present = scan_present(tracks, folder)
+    present = scan_present(tracks, folder, source)
     with S.lock:
         if S.running:
             return {"error": "Un téléchargement est déjà en cours."}
@@ -418,10 +419,10 @@ def _finish_load(tracks: list, name: str, source: str) -> dict:
     return out
 
 
-def scan_present(tracks: list, folder: str) -> dict:
+def scan_present(tracks: list, folder: str, source: str | None = None) -> dict:
     """Morceaux déjà présents dans le dossier de la playlist (même règle que le script)."""
     s = load_settings()
-    dest = Path(s["out"] or DEFAULTS["out"]).expanduser() / p2s.safe_name(folder)
+    dest = playlist_dest(S.source if source is None else source, folder, s)
     if not dest.is_dir():
         return {}
     width = max(2, len(str(len(tracks))))
@@ -439,6 +440,57 @@ def scan_present(tracks: list, folder: str) -> dict:
 # --------------------------------------------------------------------------- #
 # Historique des playlists chargées
 # --------------------------------------------------------------------------- #
+def load_dirs() -> dict:
+    """Dossier choisi pour chaque playlist (source → chemin), s'il y en a un."""
+    try:
+        return json.loads(DIRS.read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def custom_dir(source: str) -> str:
+    return load_dirs().get(source, "") if source else ""
+
+
+def playlist_dest(source: str, folder: str, settings: dict | None = None) -> Path:
+    """Où va une playlist : son dossier à elle si on l'a choisi, sinon un sous-dossier du dossier commun."""
+    d = custom_dir(source)
+    if d:
+        return Path(d).expanduser()
+    s = settings or load_settings()
+    return Path(s["out"] or DEFAULTS["out"]).expanduser() / p2s.safe_name(folder)
+
+
+def set_dir(body: dict) -> dict:
+    """Lie un dossier de l'ordinateur à une playlist (chemin vide : retour au dossier commun)."""
+    source = body.get("source") or S.source
+    if not source:
+        return {"error": "Charge d'abord une playlist."}
+    path = (body.get("path") or "").strip()
+    dirs = load_dirs()
+    if path:
+        p = Path(path).expanduser()
+        if not p.is_absolute():
+            return {"error": "Choisis un dossier complet (ex. ~/Music/Techno)."}
+        if p.exists() and not p.is_dir():
+            return {"error": "Ce chemin est un fichier, pas un dossier."}
+        dirs[source] = path
+    else:
+        dirs.pop(source, None)
+    APP_DIR.mkdir(parents=True, exist_ok=True)
+    DIRS.write_text(json.dumps(dirs, indent=2, ensure_ascii=False), "utf-8")
+    if source == S.source and not S.running:     # recoche ce qui est déjà dans le nouveau dossier
+        present = scan_present(S.tracks, S.folder)
+        with S.lock:
+            for pos in [p for p, st in S.status.items() if st == "skip"]:
+                S.status.pop(pos, None)
+                S.details.pop(pos, None)
+            for pos, f in present.items():
+                S.status[pos] = "skip"
+                S.details[pos] = {"path": str(f)}
+    return {"ok": True, "dir": path, "current": current() if source == S.source else None}
+
+
 def load_history() -> list:
     try:
         return json.loads(HISTORY.read_text("utf-8"))
@@ -475,10 +527,12 @@ def update_history(source: str, **fields) -> None:
 
 def history() -> dict:
     follows = {f["source"] for f in load_follows()}
+    dirs = load_dirs()
     items = load_history()
     for h in items:
         h["followable"] = followable(h["source"])
         h["followed"] = h["source"] in follows
+        h["dir"] = dirs.get(h["source"], "")
     return {"history": items}
 
 
@@ -511,7 +565,12 @@ def current() -> dict:
     return {"name": S.folder or (f or {}).get("name") or S.name, "source": S.source, "load_id": S.load_id,
             "status": S.status, "details": S.details,
             "tracks": [track_dict(t) for t in S.tracks],
-            "followable": followable(S.source), "followed": bool(f)}
+            "followable": followable(S.source), "followed": bool(f), "dir": custom_dir(S.source),
+            "dest_display": _tilde(playlist_dest(S.source, S.folder or S.name)) if S.source else ""}
+
+
+def _tilde(p: Path) -> str:
+    return str(p).replace(str(Path.home()), "~", 1)
 
 
 # --------------------------------------------------------------------------- #
@@ -532,7 +591,7 @@ def start_job(body: dict) -> dict:
         tracks = S.tracks[:limit] if limit > 0 else S.tracks
         name = p2s.safe_name(body.get("name") or S.name)
         pattern = settings["pattern"] or DEFAULTS["pattern"]
-        dest = Path(settings["out"] or DEFAULTS["out"]).expanduser() / name
+        dest = playlist_dest(S.source, name, settings)
         only = [int(x) for x in body.get("only") or []]
 
         bin_path = p2s.find_sockseek(None)
@@ -554,6 +613,8 @@ def start_job(body: dict) -> dict:
         runner = [sys.executable, "--p2s-script"] if FROZEN else [sys.executable, "-u", str(SCRIPT)]
         cmd = [*runner, S.source, "-o", settings["out"] or DEFAULTS["out"],
                "--name", name, "--pattern", pattern]
+        if custom_dir(S.source):
+            cmd += ["--dest", str(dest)]
         if settings["quality"] == "only_lossless":
             cmd.append("--only-lossless")
         elif settings["quality"] == "lossless":
@@ -867,7 +928,9 @@ def follow(body: dict) -> dict:
 
 
 def list_follows() -> dict:
-    return {"follows": load_follows(), "sync": {k: SYNC[k] for k in ("active", "index", "total", "current", "added")}}
+    dirs = load_dirs()
+    items = [{**f, "dir": dirs.get(f["source"], "")} for f in load_follows()]
+    return {"follows": items, "sync": {k: SYNC[k] for k in ("active", "index", "total", "current", "added")}}
 
 
 def _record(source: str, **fields) -> None:
@@ -1242,6 +1305,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/edit": lambda: save_edit(body),
             "/api/replace": lambda: replace_tracks(body),
             "/api/account": lambda: save_account(body),
+            "/api/dir": lambda: set_dir(body),
             "/api/pick-folder": pick_folder,
             "/api/open": lambda: open_path(body.get("path", "")),
             "/api/reveal": lambda: reveal(body.get("path", "")),
