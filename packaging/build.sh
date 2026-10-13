@@ -37,7 +37,8 @@ echo "--- sockseek --help (options utilisées par l'appli) ---"
 "build/sockseek/$EXE" --help 2>&1 | grep -E -- "--config|--progress-json|--name-format" || echo "(attention : options non trouvées dans --help)"
 
 # 2. Client ID Spotify partagé (facultatif, pas secret)
-if [ -n "${SPOTIFY_CLIENT_ID:-}" ]; then printf '%s' "$SPOTIFY_CLIENT_ID" > build/spotify-client-id.txt; fi
+if [ -n "${SPOTIFY_CLIENT_ID:-}" ]; then printf '%s' "$SPOTIFY_CLIENT_ID" > build/spotify-client-id.txt
+elif [ -f packaging/spotify-client-id.txt ]; then cp packaging/spotify-client-id.txt build/spotify-client-id.txt; fi
 
 # 3. PyInstaller
 ARGS=(--noconfirm --clean --windowed --name Playlist2Slsk
