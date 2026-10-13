@@ -1,0 +1,10 @@
+.venv/
+bin/
+build/
+dist/
+__pycache__/
+*.spec
+mac/build.log
+captures/
+App/
+.DS_Store

@@ -1,0 +1,1515 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>playlist2slsk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Style « Bac à disques » : clair, graphique, typographie forte, filets noirs. */
+:root {
+  --bg: #ecebe6; --card: #ecebe6; --paper: #ffffff; --text: #111111; --muted: #66655f; --line: #111111; --hair: #cfcdc5;
+  --soft: #e1dfd8; --accent: #2f4bff; --accent-ink: #ffffff; --accent-soft: #dfe3ff; --warn: #9a5b00; --warn-soft: #f6e3bf;
+  --err: #d23a12; --err-soft: #fbd9cd; --shadow: none;
+  --display: "Archivo", "Helvetica Neue", Helvetica, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #151514; --card: #151514; --paper: #1f1f1d; --text: #ecebe6; --muted: #9a9890; --line: #ecebe6; --hair: #34332f;
+    --soft: #262624; --accent: #7186ff; --accent-ink: #0d0d0c; --accent-soft: #23284a; --warn: #f0b24a; --warn-soft: #3a2d15;
+    --err: #ff7a52; --err-soft: #3d1d12;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 15px/1.45 var(--display); -webkit-font-smoothing: antialiased; }
+main { max-width: 1100px; margin: 0 auto; padding: 28px 40px 80px; }
+header { display: flex; align-items: center; gap: 24px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 2px solid var(--line); }
+.logo { display: none; }
+h1 { font-size: 22px; font-weight: 900; margin: 0; letter-spacing: -0.03em; text-transform: uppercase; }
+header p { margin: 0; color: var(--muted); font: 12px var(--mono); text-transform: uppercase; }
+.card { background: none; border: 0; border-top: 2px solid var(--line); border-radius: 0; padding: 22px 0 8px; margin-bottom: 28px; }
+#step-load, #step-list, #view-follows > .card:first-child, #view-settings > .card:first-child { border-top: 0; padding-top: 0; }
+.hidden { display: none !important; }
+.banner { padding: 12px 14px; font-size: 14px; margin-bottom: 20px; background: var(--warn-soft); color: var(--text); border-left: 0; font-weight: 500; }
+.banner.err { background: var(--err-soft); }
+code { font: 12.5px var(--mono); background: var(--soft); padding: 1px 5px; color: var(--text); }
+a { color: inherit; }
+
+/* Dépôt */
+.drop { border: 2px dashed var(--line); padding: 56px 20px; text-align: center; cursor: pointer; transition: .15s; background: var(--paper); }
+.drop:hover, .drop.over { border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
+.drop svg { width: 36px; height: 36px; stroke: var(--text); fill: none; stroke-width: 1.8; margin-bottom: 10px; }
+.drop strong { display: block; font-size: 30px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
+.drop span { color: var(--muted); font: 12.5px var(--mono); text-transform: uppercase; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font: 12px var(--mono); text-transform: uppercase; margin: 20px 0; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--hair); }
+.row { display: flex; gap: 8px; }
+input[type=text], input[type=number], input[type=password], select, textarea {
+  font: inherit; color: var(--text); background: var(--paper); border: 2px solid var(--line); border-radius: 0;
+  padding: 10px 12px; width: 100%; outline: none; transition: .15s; min-width: 0;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea { resize: vertical; min-height: 44px; }
+button { font: 700 13px/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.06em; border: 2px solid var(--line); border-radius: 0; padding: 11px 16px; cursor: pointer; transition: .12s; white-space: nowrap; }
+.btn { background: transparent; color: var(--text); }
+.btn:hover { background: var(--text); color: var(--bg); }
+.primary { background: var(--text); color: var(--bg); }
+.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.primary.big { width: 100%; padding: 18px; font-size: 16px; }
+button:disabled { opacity: .4; cursor: default; }
+button:disabled:hover { background: transparent; color: var(--text); }
+.primary:disabled:hover { background: var(--text); color: var(--bg); border-color: var(--line); }
+.hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+/* Playlist */
+.pl-head { display: flex; gap: 22px; align-items: end; margin-bottom: 26px; }
+.mosaic { width: 120px; height: 120px; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); flex: none; }
+.mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mosaic.one { grid-template-columns: 1fr; }
+.mosaic:empty::after, div.art::after { content: "♪"; display: grid; place-items: center; height: 100%; color: var(--muted); font-size: 30px; }
+div.art::after { font-size: 20px; }
+.pl-head h2 { margin: 0; font-size: 64px; font-weight: 900; line-height: 0.92; letter-spacing: -0.045em; overflow-wrap: anywhere; }
+.pl-head p { margin: 0 0 8px; color: var(--muted); font: 13px var(--mono); text-transform: uppercase; order: -1; }
+.pl-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.link { background: none; border: 0; color: var(--muted); padding: 6px 4px; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--text); background: none; }
+
+/* Morceaux : des pochettes rangées comme dans un bac */
+.tracks { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px 18px; max-height: 600px; overflow-y: auto; padding: 4px 6px 4px 4px; margin: 0 -6px 0 -4px; }
+.tr { display: grid; grid-template-columns: 84px minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 12px; align-items: start; position: relative; }
+.tr .art { grid-column: 1; grid-row: 1 / span 2; width: 84px; height: 84px; background: var(--soft); object-fit: cover; display: block; }
+.tr .n { grid-column: 1; grid-row: 1 / span 2; align-self: end; justify-self: start; z-index: 1; margin: 0 0 4px 4px; padding: 1px 5px; background: var(--text); color: var(--bg); font: 500 11px var(--mono); }
+.tr .t { grid-column: 2; grid-row: 1; min-width: 0; padding-top: 1px; }
+.tr .t b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 700; font-size: 15.5px; line-height: 1.15; }
+.tr .t span { display: block; color: var(--muted); font-size: 13px; margin-top: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tr .d { grid-column: 2; grid-row: 2; align-self: start; margin-top: 7px; color: var(--muted); font: 12px var(--mono); }
+.tr .st { grid-column: 1; grid-row: 1 / span 2; align-self: start; justify-self: end; z-index: 1; margin: 4px; width: 22px; height: 22px; display: grid; place-items: center; background: var(--paper); border-radius: 50%; }
+.tr .st:empty { display: none; }
+.tr.dim { opacity: .45; }
+.st svg { width: 14px; height: 14px; }
+.st.ok { background: var(--text); } .st.ok svg { stroke: var(--bg); }
+.st.miss { background: var(--err); } .st.miss svg { stroke: #fff; }
+.st.skip svg, .st.lib svg { stroke: var(--muted); }
+.tr:has(.st.dl) .art { outline: 3px solid var(--accent); outline-offset: 3px; }
+.tr.fixable { cursor: pointer; }
+.tr.fixable:hover .t b { text-decoration: underline; text-underline-offset: 3px; }
+.fix { grid-column: 1 / -1; background: var(--paper); border: 2px solid var(--line); padding: 16px; display: grid; gap: 12px; }
+.fix .grid2 { gap: 12px; }
+.fix-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fix-actions .check { margin-right: auto; font-size: 14px; }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--hair); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Options */
+.opts { display: grid; gap: 20px; margin: 28px 0 20px; }
+label.lbl { display: block; font: 500 11.5px var(--mono); color: var(--muted); margin-bottom: 7px; text-transform: uppercase; letter-spacing: .06em; }
+.seg { display: flex; border: 2px solid var(--line); }
+.seg button { flex: 1; background: var(--paper); color: var(--text); border: 0; border-left: 2px solid var(--line); padding: 10px 6px; font-size: 12.5px; }
+.seg button:first-child { border-left: 0; }
+.seg button:hover { background: var(--soft); color: var(--text); }
+.seg button.on { background: var(--text); color: var(--bg); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+details { border-top: 1px solid var(--hair); padding-top: 14px; }
+summary { cursor: pointer; color: var(--muted); font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .04em; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "+"; display: inline-block; width: 14px; }
+details[open] summary::before { content: "–"; }
+details .opts { margin-bottom: 4px; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; cursor: pointer; }
+.check input { accent-color: var(--text); width: 18px; height: 18px; }
+
+/* Progression */
+.prog-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 12px; }
+.prog-head b { font: 500 13px var(--mono); text-transform: uppercase; }
+.prog-head span { font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
+.bar { height: 16px; border: 2px solid var(--line); background: var(--paper); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s; }
+.bar.indet i { width: 30% !important; animation: slide 1.4s ease-in-out infinite; }
+@keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+.last { color: var(--muted); font: 12px var(--mono); margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log { background: var(--paper); border: 1px solid var(--hair); padding: 12px; margin-top: 12px; max-height: 260px; overflow: auto; font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.done { text-align: left; padding: 4px 0; }
+.done .big { font-size: 96px; font-weight: 900; letter-spacing: -0.05em; line-height: 0.9; }
+.done p { color: var(--muted); margin: 10px 0 22px; overflow-wrap: anywhere; font-size: 15px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+body.has-player .toast { bottom: 100px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 12px 18px; font: 500 14px var(--display); max-width: calc(100% - 32px); }
+
+/* Bilan */
+.badge { display: inline-block; font: 500 11px var(--mono); text-transform: uppercase; padding: 3px 6px; border: 1px solid var(--muted); color: var(--text); white-space: nowrap; }
+.badge.flac { background: var(--text); color: var(--bg); border-color: var(--text); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.badge.bad { background: var(--err); color: #fff; border-color: var(--err); }
+.group.warn { border-color: var(--warn); }
+.group.warn .group-head span { background: var(--warn); }
+.group .btn { margin-top: 12px; }
+.exports { display: grid; gap: 10px; margin: 0 0 24px; }
+.export { display: flex; align-items: center; gap: 14px; border: 2px solid var(--line); padding: 12px 14px; background: var(--paper); }
+.export b { font-weight: 700; font-size: 15px; }
+.export p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.export .grow { flex: 1; min-width: 0; }
+.export .logo-dj { width: 34px; height: 34px; display: grid; place-items: center; font-weight: 900; font-size: 15px; color: #fff; flex: none; }
+.tr .t span.err { color: var(--err); }
+.tr .t span.live { color: var(--accent); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+.chip { border: 1px solid var(--line); padding: 5px 10px; font: 500 12px var(--mono); text-transform: uppercase; }
+.chip b { font-weight: 500; background: var(--text); color: var(--bg); padding: 0 5px; margin-right: 2px; }
+.groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin: 0 0 24px; }
+.group { border: 2px solid var(--line); background: var(--paper); padding: 14px 16px; }
+.group-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; font-weight: 800; font-size: 16px; letter-spacing: -0.01em; }
+.group-head span { background: var(--err); color: #fff; font: 500 12px var(--mono); padding: 2px 7px; }
+.group p { margin: 4px 0 10px; color: var(--muted); font-size: 13px; }
+.group ul { margin: 0; padding: 0; list-style: none; font-size: 13.5px; display: grid; gap: 3px; }
+.group li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group li i { color: var(--muted); font-style: normal; }
+
+/* Onglets et réglages */
+header .grow { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 22px; }
+.tabs button { background: none; border: 0; color: var(--muted); padding: 4px 0 3px; font-size: 13.5px; border-bottom: 3px solid transparent; }
+.tabs button:hover { color: var(--text); background: none; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+.card h3 { margin: 0 0 4px; font-size: 30px; font-weight: 900; letter-spacing: -0.035em; line-height: 1; }
+.card h3 + .sub { margin: 6px 0 22px; color: var(--muted); font-size: 14px; max-width: 640px; }
+.stack { display: grid; gap: 18px; max-width: 760px; }
+.stack .check + .hint { margin: -12px 0 0 28px; }
+.saved { color: var(--accent); font: 500 12px var(--mono); text-transform: uppercase; opacity: 0; transition: opacity .3s; }
+.saved.show { opacity: 1; }
+.summary { color: var(--muted); font-size: 13px; margin-top: 8px; }
+.summary a { color: inherit; cursor: pointer; text-decoration: underline; }
+
+/* Playlists suivies */
+.follow-btn { background: transparent; color: var(--text); }
+.follow-btn:hover { background: var(--text); color: var(--bg); }
+.follow-btn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+#follows { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px 18px; margin-top: 6px; }
+.fl { display: grid; grid-template-columns: 96px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 14px; align-items: start; }
+.fl .cov { grid-row: 1 / span 2; width: 96px; height: 96px; background: var(--soft); object-fit: cover; display: block; }
+div.cov::after { content: "♪"; display: grid; place-items: center; height: 100%; color: var(--muted); font-size: 22px; }
+.fl b { display: block; font-weight: 800; font-size: 19px; letter-spacing: -0.02em; line-height: 1.1; }
+.fl p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.fl p .new { background: var(--accent); color: var(--accent-ink); font: 500 11px var(--mono); padding: 1px 5px; text-transform: uppercase; }
+.fl p .err { color: var(--err); }
+.fl .acts { grid-column: 2; display: flex; gap: 6px; align-items: center; margin-top: 10px; }
+.fl .acts .btn { padding: 8px 12px; font-size: 12px; }
+.fl.busy .cov { outline: 3px solid var(--accent); outline-offset: 3px; }
+.fl.busy b::after { content: " · mise à jour…"; color: var(--accent); font-weight: 500; font-size: 13px; letter-spacing: 0; }
+.empty { color: var(--muted); padding: 10px 0; font-size: 15px; grid-column: 1 / -1; }
+.list-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+
+/* Choix de la source */
+.load-title { margin: 0 0 22px; font-size: 48px; font-weight: 900; letter-spacing: -0.045em; line-height: 0.95; }
+.sources { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.src { display: grid; justify-items: start; gap: 4px; text-align: left; text-transform: none; letter-spacing: 0; background: var(--paper); color: var(--text); padding: 18px; min-height: 150px; }
+.src:hover { background: var(--soft); color: var(--text); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--brand, var(--line)); }
+.src:focus-visible { outline: 3px solid var(--brand, var(--accent)); outline-offset: 2px; }
+.src.on { background: var(--text); color: var(--bg); box-shadow: 6px 6px 0 var(--brand, var(--accent)); transform: translate(-3px, -3px); }
+.src-ico { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: auto; }
+.src-ico svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.src b { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; margin-top: 18px; }
+.src small { font: 500 11.5px var(--mono); text-transform: uppercase; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src.on small { color: inherit; opacity: .7; }
+.src-panel { margin-top: 26px; border: 2px solid var(--line); background: var(--paper); padding: 22px; }
+.src-panel .drop { background: var(--bg); padding: 40px 20px; }
+.src-panel .drop strong { font-size: 24px; }
+.src-panel #src-link + #src-csv .or { margin: 22px 0 16px; }
+.step-load-drag { outline: 3px dashed var(--accent); outline-offset: 8px; }
+@media (max-width: 700px) { .sources { grid-template-columns: repeat(2, minmax(0, 1fr)); } .load-title { font-size: 34px; } }
+
+#history { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px 18px; margin-top: 6px; }
+.hist-tag { font: 500 11px var(--mono); text-transform: uppercase; color: var(--accent); padding: 0 6px; }
+.pl-head #pl-listen { padding: 11px 14px; }
+
+.exportify { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+.exportify .grow { flex: 1; min-width: 0; }
+.exportify b { font-weight: 800; font-size: 16px; }
+.exportify p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; }
+.exportify-wait { display: flex; gap: 10px; align-items: center; margin: -4px 0 16px; padding: 10px 12px; background: var(--accent-soft); font-size: 14px; font-weight: 500; }
+.exportify-wait .link { margin-left: auto; }
+@media (max-width: 700px) { .exportify { flex-direction: column; align-items: stretch; } }
+
+/* Bandcamp */
+.tr .d { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bc-btn { display: inline-flex; align-items: center; gap: 5px; font: 500 10.5px var(--mono); text-transform: uppercase; letter-spacing: .02em; color: #1da0c3; border: 1px solid #1da0c3; padding: 2px 6px; text-decoration: none; white-space: nowrap; }
+.bc-btn::before { content: ""; width: 9px; height: 6px; background: currentColor; clip-path: polygon(30% 0, 100% 0, 70% 100%, 0 100%); }
+.bc-btn:hover { background: #1da0c3; color: #fff; }
+.bc-btn.big { padding: 6px 10px; font-size: 11.5px; }
+@media (max-width: 700px) { .player .bc-btn { display: none; } }
+
+/* Lecteur */
+.tr .play { grid-column: 1; grid-row: 1 / span 2; align-self: center; justify-self: center; z-index: 2; width: 40px; height: 40px; padding: 0; border-radius: 50%; border: 0; background: var(--text); color: var(--bg); display: grid; place-items: center; opacity: 0; transform: scale(.85); transition: .15s; }
+.tr .play svg { width: 16px; height: 16px; fill: currentColor; }
+.tr:hover .play, .tr .play:focus-visible, .tr.playing .play { opacity: 1; transform: none; }
+.tr .play:hover { background: var(--accent); color: var(--accent-ink); }
+.tr.playing .art { outline: 3px solid var(--text); outline-offset: 3px; }
+.tr.playing .t b { color: var(--accent); }
+.player { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--bg); border-top: 2px solid var(--line); }
+.player-in { max-width: 1100px; margin: 0 auto; padding: 12px 40px; display: grid; grid-template-columns: auto 52px minmax(0, 1fr) auto minmax(160px, 2fr) auto; gap: 16px; align-items: center; }
+.player .ctl { display: flex; gap: 6px; align-items: center; }
+.player .ctl button { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; background: transparent; color: var(--text); border: 0; }
+.player .ctl button:hover { background: var(--soft); color: var(--text); }
+.player .ctl #pl-play { width: 46px; height: 46px; border-radius: 50%; background: var(--text); color: var(--bg); }
+.player .ctl #pl-play:hover { background: var(--accent); color: var(--accent-ink); }
+.player .ctl svg { width: 18px; height: 18px; fill: currentColor; }
+.player .cov { width: 52px; height: 52px; background: var(--soft); object-fit: cover; display: block; }
+.player .who { min-width: 0; }
+.player .who b { display: block; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .who span { display: block; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .seek { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.player input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; background: transparent; padding: 0; border: 0; cursor: pointer; }
+.player input[type=range]::-webkit-slider-runnable-track { height: 6px; background: linear-gradient(var(--accent), var(--accent)) 0 / var(--p, 0%) 100% no-repeat, var(--soft); border: 1px solid var(--line); }
+.player input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; background: var(--text); border: 0; }
+.player input[type=range]::-moz-range-track { height: 6px; background: var(--soft); border: 1px solid var(--line); }
+.player input[type=range]::-moz-range-progress { height: 6px; background: var(--accent); }
+.player input[type=range]::-moz-range-thumb { width: 14px; height: 14px; background: var(--text); border: 0; border-radius: 0; }
+.player .badge { justify-self: start; }
+.player-close { background: none; border: 0; color: var(--muted); padding: 6px; font-size: 20px; line-height: 1; }
+.player-close:hover { background: none; color: var(--text); }
+body.has-player main { padding-bottom: 130px; }
+@media (max-width: 700px) {
+  .player-in { grid-template-columns: auto minmax(0, 1fr) auto; padding: 10px 16px; gap: 10px; }
+  .player .cov { display: none; }
+  .player .seek { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* Spotify */
+.sp-green { background: #1db954; border-color: #1db954; color: #0b0b0b; }
+.sp-green:hover { background: #1ed760; border-color: #1ed760; color: #0b0b0b; }
+.sp-setup .sp-lead { margin: 0 0 14px; font-weight: 700; font-size: 17px; }
+.sp-setup ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.sp-setup li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; font-size: 14.5px; }
+.sp-n { width: 26px; height: 26px; background: var(--text); color: var(--bg); display: grid; place-items: center; font: 500 13px var(--mono); }
+.sp-uri { margin-top: 8px; align-items: center; }
+.sp-uri code { flex: 1; min-width: 0; padding: 10px 12px; border: 2px dashed var(--line); background: var(--bg); font-size: 13px; overflow-wrap: anywhere; }
+.sp-connect { display: grid; gap: 4px; }
+.sp-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; font: 500 12.5px var(--mono); text-transform: uppercase; }
+.sp-head b { font-weight: 500; color: #1a9f4b; }
+.sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-height: 420px; overflow-y: auto; padding: 2px; }
+.sp-pl { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; text-transform: none; letter-spacing: 0; padding: 6px; background: var(--bg); color: var(--text); border: 2px solid transparent; }
+.sp-pl:hover { border-color: var(--line); background: var(--bg); color: var(--text); }
+.sp-pl.other { opacity: .45; }
+.sp-pl img, .sp-cov { width: 56px; height: 56px; object-fit: cover; display: grid; place-items: center; background: var(--soft); font-size: 22px; color: var(--muted); }
+.sp-cov.liked { background: #5038ed; color: #fff; }
+.sp-t { min-width: 0; display: grid; gap: 2px; }
+.sp-t b { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-t small { font: 500 11px var(--mono); text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sp-box .or { margin: 22px 0 16px; }
+
+/* Connexion Soulseek */
+.modal { position: fixed; inset: 0; background: rgba(17,17,17,.55); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.modal-box { width: 100%; max-width: 480px; background: var(--bg); border: 2px solid var(--line); padding: 28px; display: grid; gap: 16px; box-shadow: 10px 10px 0 var(--accent); }
+.modal-box .kicker { font: 500 12px var(--mono); text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
+.modal-box h2 { margin: -8px 0 0; font-size: 40px; font-weight: 900; letter-spacing: -0.04em; line-height: 0.95; }
+.modal-box p { margin: 0; color: var(--muted); font-size: 14px; }
+.modal-box .acts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.modal-box .acts .primary { flex: 1; padding: 14px; }
+.login-msg { font-size: 14px; font-weight: 500; padding: 10px 12px; }
+.login-msg.err { background: var(--err-soft); color: var(--err); }
+.login-msg.ok { background: var(--accent-soft); color: var(--text); }
+.modal-box .spin { display: inline-block; vertical-align: -2px; margin-right: 8px; border-top-color: var(--bg); border-color: rgba(255,255,255,.35); border-top-color: #fff; }
+
+@media (max-width: 700px) {
+  main { padding: 20px 16px 60px; }
+  header { flex-wrap: wrap; }
+  .pl-head { flex-wrap: wrap; }
+  .pl-head h2 { font-size: 42px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .done .big { font-size: 64px; }
+  .list-head { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M9 18V6l11-2v12a3 3 0 1 1-2-2.83V8.3l-7 1.27V18a3 3 0 1 1-2-2.83z"/></svg></div>
+    <div class="grow"><h1>playlist2slsk</h1><p>Playlist → Soulseek → fichiers rangés</p></div>
+    <nav class="tabs">
+      <button data-tab="dl" class="on">Télécharger</button>
+      <button data-tab="follows">Playlists</button>
+      <button data-tab="settings">Réglages</button>
+    </nav>
+  </header>
+
+  <div id="warn"></div>
+
+  <div id="view-dl">
+    <!-- 1. Choisir la playlist -->
+    <section id="step-load" class="card">
+      <h2 class="load-title">D'où vient ta playlist ?</h2>
+      <div class="sources" role="group" aria-label="Source de la playlist">
+        <button class="src" data-src="spotify" type="button" style="--brand:#1db954">
+          <span class="src-ico" style="background:#1db954"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5c4-1.3 8.5-1 12 1M7 13c3.3-1 7-.7 9.8.8M8 16.3c2.6-.7 5.3-.5 7.5.6"/></svg></span>
+          <b>Spotify</b><small>Tes playlists</small>
+        </button>
+        <button class="src" data-src="deezer" type="button" style="--brand:#a238ff">
+          <span class="src-ico" style="background:#a238ff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17v-3M9.5 17v-6M14 17V8M18.5 17V5"/></svg></span>
+          <b>Deezer</b><small>Playlist publique</small>
+        </button>
+        <button class="src" data-src="youtube" type="button" style="--brand:#ff0033">
+          <span class="src-ico" style="background:#ff0033"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10l8.5-5z" fill="#fff" stroke="none"/></svg></span>
+          <b>YouTube</b><small>Playlist ou vidéo</small>
+        </button>
+        <button class="src" data-src="soundcloud" type="button" style="--brand:#ff5500">
+          <span class="src-ico" style="background:#ff5500"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 16h10.5a3 3 0 0 0 .3-6 4.5 4.5 0 0 0-8.6-1.2M4 16v-3M6.5 16V10"/></svg></span>
+          <b>SoundCloud</b><small>Playlist ou set</small>
+        </button>
+        <button class="src" data-src="csv" type="button" style="--brand:#2f4bff">
+          <span class="src-ico" style="background:#2f4bff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h6l4 4v12H8zM14 4v4h4M10.5 13h5M10.5 16h5"/></svg></span>
+          <b>Fichier CSV</b><small>Exportify, TuneMyMusic…</small>
+        </button>
+      </div>
+
+      <div id="src-panel" class="src-panel hidden">
+        <div id="sp-box" class="hidden"></div>
+        <div id="src-link">
+          <label class="lbl" for="url" id="url-label">Lien</label>
+          <div class="row">
+            <input id="url" type="text" spellcheck="false" autocomplete="off">
+            <button id="url-go" class="primary">Charger</button>
+          </div>
+          <p class="hint" id="src-hint"></p>
+        </div>
+        <div id="src-csv">
+          <div class="or" id="csv-or">ou</div>
+          <div class="exportify">
+            <div class="grow"><b>Pas de CSV sous la main ?</b>
+              <p>Ouvre Exportify, connecte-toi avec Spotify et clique sur « Export » à côté de ta playlist. Le fichier est chargé ici automatiquement dès qu'il arrive dans Téléchargements.</p></div>
+            <button id="exportify-go" class="primary sp-green" type="button">Exporter avec Exportify ↗</button>
+          </div>
+          <div id="exportify-wait" class="exportify-wait hidden" role="status"><span class="spin"></span><span>En attente du CSV dans Téléchargements…</span><button id="exportify-stop" class="link" type="button">Annuler</button></div>
+          <div id="drop" class="drop">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <strong>Dépose ton CSV</strong>
+            <span>ou clique pour le choisir</span>
+            <input id="file" type="file" accept=".csv,.tsv,.txt,text/csv" hidden>
+          </div>
+          <p class="hint">Les exports de TuneMyMusic et Soundiiz marchent aussi : dépose le fichier ci-dessus.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Vérifier et lancer -->
+    <section id="step-list" class="card hidden">
+      <div class="pl-head">
+        <div id="mosaic" class="mosaic"></div>
+        <div class="grow"><h2 id="pl-name"></h2><p id="pl-meta"></p></div>
+        <button id="pl-listen" class="primary hidden" type="button">▶ Écouter</button>
+        <button id="follow" class="follow-btn hidden" title="Retrouver cette playlist dans l'onglet Playlists et la mettre à jour en un clic">+ Suivre</button>
+        <button id="change" class="link">Changer</button>
+      </div>
+      <div id="tracks" class="tracks"></div>
+
+      <div id="options">
+        <div class="opts">
+          <div>
+            <label class="lbl">Format</label>
+            <div class="seg" data-key="quality">
+              <button data-v="lossless">FLAC si possible</button>
+              <button data-v="only_lossless">FLAC seul</button>
+              <button data-v="mp3">MP3</button>
+              <button data-v="any">Peu importe</button>
+            </div>
+            <p class="summary" id="fmt-summary"></p>
+          </div>
+          <div>
+            <label class="lbl">Dossier de destination</label>
+            <div class="row">
+              <input id="out" type="text" data-key="out">
+              <button class="btn pick" data-target="#out">Choisir…</button>
+            </div>
+            <p class="hint" id="dest-hint"></p>
+          </div>
+        </div>
+        <details>
+          <summary>Pour cette playlist</summary>
+          <div class="opts grid2">
+            <div><label class="lbl">Nom du dossier</label><input id="name" type="text"></div>
+            <div><label class="lbl">Nombre de morceaux</label><input id="limit" type="number" min="0" placeholder="Tous"></div>
+          </div>
+        </details>
+        <div style="margin-top:20px"><button id="go" class="primary big">Télécharger</button></div>
+      </div>
+    </section>
+
+    <!-- 3. Progression -->
+    <section id="step-run" class="card hidden">
+      <div id="running">
+        <div class="prog-head"><b id="phase">Recherche sur Soulseek…</b><span id="count"></span></div>
+        <div id="bar" class="bar indet"><i></i></div>
+        <div id="last" class="last"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:14px">
+          <button id="toggle-log" class="link" style="padding-left:0">Afficher le journal</button>
+          <button id="stop" class="btn">Arrêter</button>
+        </div>
+      </div>
+      <div id="finished" class="done hidden">
+        <div class="big" id="res-big"></div>
+        <p id="res-sub"></p>
+        <div id="report"></div>
+        <div class="actions">
+          <button id="listen" class="primary">▶ Écouter la playlist</button>
+          <button id="open" class="btn">Ouvrir le dossier</button>
+          <button id="retry" class="btn hidden">Réessayer les manquants</button>
+          <button id="again" class="btn">Nouvelle playlist</button>
+        </div>
+        <button id="toggle-log2" class="link" style="margin-top:12px">Afficher le journal technique</button>
+      </div>
+      <div id="log" class="log hidden"></div>
+    </section>
+  </div>
+
+  <!-- Playlists suivies -->
+  <div id="view-follows" class="hidden">
+    <section class="card">
+      <div class="list-head">
+        <div><h3>Playlists suivies</h3>
+        <p class="sub">Une mise à jour ne télécharge que les morceaux ajoutés depuis la dernière fois.</p></div>
+        <button id="sync-all" class="primary">Tout mettre à jour</button>
+      </div>
+      <div id="follows"></div>
+      <label class="check" style="margin-top:16px"><input type="checkbox" data-key="sync_on_launch"> Mettre à jour automatiquement à l'ouverture de l'appli</label>
+    </section>
+    <section class="card">
+      <div class="list-head">
+        <div><h3>Historique</h3>
+        <p class="sub">Toutes les playlists déjà chargées. Un clic les rouvre avec ce qui est déjà téléchargé, prêt à écouter.</p></div>
+        <button id="hist-clear" class="link" type="button">Vider l'historique</button>
+      </div>
+      <div id="history"></div>
+    </section>
+  </div>
+
+  <!-- Réglages -->
+  <div id="view-settings" class="hidden">
+    <section class="card">
+      <h3>Compte Soulseek</h3>
+      <p class="sub">Idéalement un compte dédié, différent de celui de ton client habituel. Il est enregistré dans <code>~/.config/sockseek/sockseek.conf</code>, sur ton Mac uniquement.</p>
+      <div class="stack">
+        <div class="grid2">
+          <div><label class="lbl">Identifiant</label><input id="acc-user" type="text" autocomplete="off" spellcheck="false"></div>
+          <div><label class="lbl">Mot de passe</label><input id="acc-pass" type="password" autocomplete="new-password"></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lbl">Port d'écoute</label><input id="acc-port" type="text" inputmode="numeric" placeholder="49998"></div>
+          <div style="display:flex;align-items:end;gap:12px"><button id="acc-save" class="primary">Enregistrer le compte</button><span class="saved" id="acc-saved">Enregistré</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Format et qualité</h3>
+      <p class="sub">Appliqué à chaque téléchargement.</p>
+      <div class="stack">
+        <div>
+          <label class="lbl">Format</label>
+          <div class="seg" data-key="quality">
+            <button data-v="lossless">FLAC si possible</button>
+            <button data-v="only_lossless">FLAC seul</button>
+            <button data-v="mp3">MP3</button>
+            <button data-v="any">Peu importe</button>
+          </div>
+          <p class="hint" id="quality-hint"></p>
+        </div>
+        <div>
+          <label class="lbl">Débit minimum</label>
+          <div class="seg" data-key="min_bitrate">
+            <button data-v="0">Aucun</button>
+            <button data-v="192">192 kbps</button>
+            <button data-v="256">256 kbps</button>
+            <button data-v="320">320 kbps</button>
+          </div>
+          <p class="hint">Les fichiers en dessous sont ignorés. Un FLAC dépasse toujours 320 kbps, il passe donc ce filtre.</p>
+        </div>
+        <label class="check"><input type="checkbox" data-key="strict_conditions"> Refuser les fichiers dont le débit est inconnu</label>
+        <p class="hint">Plus sûr pour la qualité, mais certains partages n'indiquent pas le débit : tu trouveras moins de morceaux.</p>
+        <label class="check"><input type="checkbox" data-key="check_lossless"> Repérer les faux FLAC</label>
+        <p class="hint">Analyse le spectre de chaque FLAC téléchargé : un MP3 réencodé en FLAC coupe net vers 16 à 20 kHz. Les suspects sont signalés dans le bilan.</p>
+        <label class="check"><input type="checkbox" data-key="cdj"> Compatible CDJ : 16 bits et 48 kHz maximum</label>
+        <p class="hint">Évite les FLAC en 24 bits ou 96 kHz que certaines platines ne lisent pas.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Recherche</h3>
+      <p class="sub">Comment sockseek choisit le bon fichier.</p>
+      <div class="stack">
+        <div>
+          <label class="lbl">Correspondance</label>
+          <div class="seg" data-key="match">
+            <button data-v="strict">Stricte</button>
+            <button data-v="normal">Normale</button>
+            <button data-v="wide">Élargie</button>
+          </div>
+          <p class="hint">Stricte si de mauvais morceaux arrivent, élargie pour retrouver les introuvables (plus lente).</p>
+        </div>
+        <label class="check"><input type="checkbox" data-key="fast_search"> Recherche rapide</label>
+        <p class="hint">Télécharge dès qu'un bon fichier apparaît, sans attendre la fin de la recherche.</p>
+        <label class="check"><input type="checkbox" data-key="remove_ft"> Ignorer les « feat. » dans les titres</label>
+        <p class="hint">« Titre (feat. X) » est cherché comme « Titre », ce qui aide souvent.</p>
+        <div>
+          <label class="lbl">Utilisateurs à éviter</label>
+          <input type="text" data-key="banned_users" placeholder="pseudo1, pseudo2" spellcheck="false">
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Fichiers</h3>
+      <p class="sub">Où et comment les morceaux sont rangés.</p>
+      <div class="stack">
+        <div>
+          <label class="lbl">Dossier par défaut</label>
+          <div class="row">
+            <input id="set-out" type="text" data-key="out">
+            <button class="btn pick" data-target="#set-out">Choisir…</button>
+          </div>
+        </div>
+        <div>
+          <label class="lbl">Nom des fichiers</label>
+          <select id="pattern" data-key="pattern">
+            <option value="{artist} - {title}">Artiste - Titre</option>
+            <option value="{n} - {artist} - {title}">01 - Artiste - Titre</option>
+            <option value="{album}/{artist} - {title}">Album / Artiste - Titre</option>
+            <option value="{artist}/{album}/{title}">Artiste / Album / Titre</option>
+          </select>
+        </div>
+        <label class="check"><input type="checkbox" data-key="skip_library"> Ne pas retélécharger ce que j'ai déjà</label>
+        <div>
+          <label class="lbl">Ma bibliothèque</label>
+          <textarea data-key="library_dirs" rows="3" spellcheck="false" placeholder="~/Music&#10;~/Documents/SET"></textarea>
+          <div class="row" style="justify-content:space-between;align-items:center;margin-top:6px">
+            <p class="hint" style="margin:0">Un dossier par ligne. Un morceau est considéré comme présent si un fichier contient son artiste et son titre.</p>
+            <button class="btn" id="lib-add">Ajouter…</button>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" data-key="tags"> Réécrire les tags avec les infos Spotify</label>
+        <label class="check"><input type="checkbox" data-key="cover"> Intégrer la jaquette</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>DJ</h3>
+      <p class="sub">Retrouver tes playlists directement dans ton logiciel.</p>
+      <div class="stack">
+        <label class="check"><input type="checkbox" data-key="bandcamp"> Bouton Bandcamp à côté de chaque morceau</label>
+        <p class="hint">Ouvre la recherche Bandcamp du titre pour l'acheter et soutenir l'artiste.</p>
+        <label class="check"><input type="checkbox" data-key="export_traktor"> Créer une playlist Traktor</label>
+        <p class="hint">Un fichier .nml est créé à côté des morceaux. Dans Traktor : clic droit sur Playlists, Import Playlist, puis choisis ce fichier.</p>
+        <label class="check"><input type="checkbox" data-key="export_rekordbox"> Ajouter à Rekordbox</label>
+        <p class="hint">Toutes tes playlists sont regroupées dans un fichier rekordbox.xml, dans ton dossier de destination. À faire une seule fois dans Rekordbox : Préférences › Avancé › Base de données › rekordbox xml, choisis ce fichier, puis active « rekordbox xml » dans Préférences › Affichage › Arborescence. Tes playlists apparaissent alors dans la colonne de gauche ; clic droit › Importer la playlist.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Spotify</h3>
+      <p class="sub">Pour charger tes playlists et tes titres likés directement, sans passer par Exportify.</p>
+      <div id="sp-settings"></div>
+    </section>
+
+    <section class="card">
+      <h3>Avancé</h3>
+      <p class="sub">Options passées telles quelles à sockseek.</p>
+      <input type="text" data-key="extra" placeholder="ex. --max-stale-time 60000 --search-timeout 8000" spellcheck="false">
+    </section>
+  </div>
+</main>
+<div id="login" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+  <form class="modal-box" id="login-form" autocomplete="off">
+    <div class="kicker">Première étape</div>
+    <h2 id="login-title">Connecte-toi à Soulseek</h2>
+    <p>Idéalement un compte dédié, différent de celui de ton client habituel. Pas encore de compte ? Choisis un pseudo libre et un mot de passe : Soulseek le crée à la première connexion.</p>
+    <div><label class="lbl" for="login-user">Pseudo</label><input id="login-user" type="text" spellcheck="false" autocomplete="off"></div>
+    <div><label class="lbl" for="login-pass">Mot de passe</label><input id="login-pass" type="password" autocomplete="new-password"></div>
+    <div id="login-msg" class="login-msg hidden" role="status"></div>
+    <div class="acts">
+      <button type="submit" class="primary" id="login-go">Se connecter</button>
+      <button type="button" class="link hidden" id="login-force">Enregistrer sans vérifier</button>
+      <button type="button" class="link" id="login-later">Plus tard</button>
+    </div>
+    <p style="font-size:12.5px">Enregistré uniquement sur ton Mac, dans <code>~/.config/sockseek/sockseek.conf</code>.</p>
+  </form>
+</div>
+<div id="player" class="player hidden" aria-label="Lecteur">
+  <div class="player-in">
+    <div class="ctl">
+      <button id="pl-prev" type="button" aria-label="Morceau précédent"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button id="pl-play" type="button" aria-label="Lecture"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+      <button id="pl-next" type="button" aria-label="Morceau suivant"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    </div>
+    <img id="pl-cov" class="cov" alt="">
+    <div class="who"><b id="pl-title"></b><span id="pl-artist"></span></div>
+    <a id="pl-bc" class="bc-btn big" target="_blank" rel="noopener" href="#" title="Acheter sur Bandcamp">bandcamp</a>
+    <div class="seek"><span id="pl-cur">0:00</span><input id="pl-seek" type="range" min="0" max="1000" value="0" aria-label="Position dans le morceau"><span id="pl-dur">0:00</span></div>
+    <button id="pl-close" class="player-close" type="button" aria-label="Fermer le lecteur">×</button>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const ICONS = {
+  ok: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+  miss: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  skip: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+  lib: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14M9 5v14M14 5l5 14"/></svg>',
+};
+const QUALITY_HINT = {
+  lossless: "Cherche d'abord du FLAC ou du WAV, et prend un MP3 sinon.",
+  only_lossless: "Uniquement du FLAC : les morceaux introuvables en FLAC sont ignorés.",
+  mp3: "Uniquement du MP3. Combine avec un débit minimum de 320 kbps pour la meilleure qualité.",
+  any: "Le meilleur fichier trouvé, quel que soit son format.",
+};
+let tracks = [], plName = "", cur = {}, loadId = 0, jobId = 0, info = {}, since = 0, timer = null, settings = {}, running = false, lastStatusMap = {}, openFix = null;
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === "class" ? e.className = v : e.setAttribute(k, v);
+  for (const k of kids) e.append(k);
+  return e;
+}
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.add("hidden"), 5000);
+}
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return r.json();
+}
+const fmt = s => s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "";
+function show(id) { for (const s of ["#step-load", "#step-list", "#step-run"]) $(s).classList.toggle("hidden", s !== id); }
+
+// ---------- Onglets ----------
+function tab(name) {
+  $$(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  $("#view-dl").classList.toggle("hidden", name !== "dl");
+  $("#view-settings").classList.toggle("hidden", name !== "settings");
+  $("#view-follows").classList.toggle("hidden", name !== "follows");
+  if (name === "follows") { renderFollows(); renderHistory(); }
+  window.scrollTo(0, 0);
+}
+$$(".tabs button").forEach(b => b.onclick = () => tab(b.dataset.tab));
+$$(".go-settings").forEach(a => a.onclick = e => { e.preventDefault(); tab("settings"); });
+
+// ---------- Réglages : chaque contrôle porte data-key et s'enregistre tout seul ----------
+let saveTimer = null;
+function saveSettings() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => api("/api/settings", settings), 300);
+}
+function setSetting(key, value) {
+  settings[key] = value;
+  if (key === "bandcamp" && tracks.length) renderList(lastStatusMap);
+  syncControls(key);
+  saveSettings();
+  updateSummary(); updateDest();
+}
+function syncControls(only) {
+  $$("[data-key]").forEach(c => {
+    const k = c.dataset.key;
+    if (only && k !== only) return;
+    if (c.classList.contains("seg")) c.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === String(settings[k])));
+    else if (c.type === "checkbox") c.checked = !!settings[k];
+    else if (document.activeElement !== c) {
+      if (c.tagName === "SELECT" && ![...c.options].some(o => o.value === settings[k])) c.append(el("option", { value: settings[k] }, settings[k]));
+      c.value = settings[k] ?? "";
+    }
+  });
+  $("#quality-hint").textContent = QUALITY_HINT[settings.quality] || "";
+}
+$$(".seg[data-key]").forEach(seg => seg.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const k = seg.dataset.key;
+  setSetting(k, typeof DEFAULT_TYPES[k] === "number" ? +b.dataset.v : b.dataset.v);
+}));
+const DEFAULT_TYPES = { min_bitrate: 0 };
+$$("input[data-key], select[data-key], textarea[data-key]").forEach(c => c.addEventListener(c.type === "checkbox" || c.tagName === "SELECT" ? "change" : "input",
+  () => setSetting(c.dataset.key, c.type === "checkbox" ? c.checked : c.value.trim())));
+
+
+function updateSummary() {
+  const parts = [];
+  if (+settings.min_bitrate) parts.push(`${settings.min_bitrate} kbps minimum`);
+  if (settings.strict_conditions) parts.push("débit connu obligatoire");
+  if (settings.cdj) parts.push("compatible CDJ");
+  if (settings.match !== "normal") parts.push(settings.match === "strict" ? "recherche stricte" : "recherche élargie");
+  if (settings.fast_search) parts.push("recherche rapide");
+  const s = $("#fmt-summary"); s.innerHTML = "";
+  s.append(parts.length ? parts.join(" · ") + ". " : "", el("a", { class: "go-settings" }, parts.length ? "Modifier" : "Plus de réglages"));
+  s.querySelector("a").onclick = () => tab("settings");
+}
+
+// Compte Soulseek
+$("#acc-save").onclick = async () => {
+  const b = $("#acc-save"); b.disabled = true; b.textContent = "Vérification…";
+  const r = await api("/api/account", { username: $("#acc-user").value, password: $("#acc-pass").value, listen_port: $("#acc-port").value, verify: true });
+  b.disabled = false; b.textContent = "Enregistrer le compte";
+  if (r.error) return toast(r.error);
+  if ($("#acc-pass").value) { $("#acc-pass").value = ""; $("#acc-pass").placeholder = "enregistré"; }
+  const s = $("#acc-saved"); s.classList.add("show"); setTimeout(() => s.classList.remove("show"), 2000);
+  info = await api("/api/info"); renderWarn();
+};
+
+// Dans l'appli Mac, le sélecteur de dossier est natif (feuille attachée à la fenêtre).
+async function pickFolder() {
+  if (window.pywebview?.api?.pick_folder) {   // appli installée (Mac / Windows)
+    const path = await window.pywebview.api.pick_folder();
+    return path ? { path } : { cancelled: true };
+  }
+  const native = window.webkit?.messageHandlers?.pickFolder;
+  if (native) {
+    try { const path = await native.postMessage({}); return path ? { path } : { cancelled: true }; } catch (e) {}
+  }
+  return api("/api/pick-folder", {});
+}
+$("#lib-add").onclick = async () => {
+  const r = await pickFolder();
+  if (r.path) setSetting("library_dirs", [settings.library_dirs, r.path].filter(Boolean).join("\n"));
+  else if (r.error) toast(r.error);
+};
+$$(".pick").forEach(b => b.onclick = async () => {
+  const r = await pickFolder();
+  if (r.path) setSetting("out", r.path); else if (r.error) toast(r.error);
+});
+
+// ---------- Démarrage ----------
+function renderWarn() {
+  const w = $("#warn"); w.innerHTML = "";
+  if (!info.sockseek) w.append(el("div", { class: "banner err" }, info.packaged ? "sockseek est introuvable. Réinstalle l'appli." : "sockseek est introuvable. Relance l'appli avec Lancer.command pour l'installer."));
+  else if (!info.conf) {
+    const b = el("div", { class: "banner" }, "Ton compte Soulseek n'est pas encore configuré. ");
+    const a = el("a", { href: "#", style: "color:inherit;font-weight:600" }, "Se connecter");
+    a.onclick = e => { e.preventDefault(); openLogin(); };
+    b.append(a); w.append(b);
+  }
+}
+async function boot() {
+  info = await api("/api/info");
+  settings = info.settings;
+  renderWarn();
+  $("#acc-user").value = info.account.username;
+  $("#acc-port").value = info.account.listen_port;
+  if (info.account.has_password) $("#acc-pass").placeholder = "enregistré";
+  if (!info.mac && !info.picker) $$(".pick, #lib-add").forEach(b => b.classList.add("hidden"));
+  syncControls(); updateSummary();
+  try { const last = localStorage.getItem("p2s-source"); if (SOURCES[last]) pickSource(last); } catch (e) {}
+  renderSpotifySettings();
+  const back = new URLSearchParams(location.search).get("spotify");
+  if (back !== null) {
+    history.replaceState(null, "", "/");
+    if (back === "ok") { toast(`Connecté à Spotify${info.spotify.user ? " : " + info.spotify.user : ""}.`); pickSource("spotify"); }
+    else toast(back === "refus" ? "Connexion Spotify annulée." : `Connexion Spotify impossible : ${back}`);
+  }
+  const st = await api("/api/status?since=0");
+  if (st.running || st.sync.active) attach();   // ex. mise à jour automatique au lancement
+  else if (info.sockseek && !info.conf) openLogin();
+}
+
+// ---------- Connexion Soulseek (premier lancement) ----------
+function openLogin() {
+  $("#login-user").value = info.account.username || "";
+  $("#login-pass").value = "";
+  loginMsg("");
+  $("#login-force").classList.add("hidden");
+  $("#login").classList.remove("hidden");
+  setTimeout(() => ($("#login-user").value ? $("#login-pass") : $("#login-user")).focus(), 0);
+}
+function loginMsg(text, kind = "err") {
+  const m = $("#login-msg");
+  m.textContent = text; m.className = "login-msg " + kind; m.classList.toggle("hidden", !text);
+}
+async function submitLogin(verify) {
+  const username = $("#login-user").value.trim(), password = $("#login-pass").value;
+  if (!username || !password) return loginMsg("Indique ton pseudo et ton mot de passe.");
+  const go = $("#login-go");
+  go.disabled = true; go.innerHTML = '<span class="spin"></span>Vérification…';
+  loginMsg("");
+  const r = await api("/api/account", { username, password, listen_port: info.account.listen_port || "", verify });
+  go.disabled = false; go.textContent = "Se connecter";
+  if (r.error) {
+    loginMsg(r.error);
+    $("#login-force").classList.toggle("hidden", !r.network);
+    return;
+  }
+  loginMsg(`Connecté en tant que ${username}.`, "ok");
+  info = await api("/api/info"); renderWarn();
+  $("#acc-user").value = info.account.username;
+  if (info.account.has_password) $("#acc-pass").placeholder = "enregistré";
+  setTimeout(() => $("#login").classList.add("hidden"), 900);
+}
+$("#login-form").onsubmit = e => { e.preventDefault(); submitLogin(true); };
+$("#login-force").onclick = () => submitLogin(false);
+$("#login-later").onclick = () => $("#login").classList.add("hidden");
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#login").classList.contains("hidden")) $("#login").classList.add("hidden"); });
+async function attach() {
+  // Rejoint un téléchargement lancé hors de cette page (mise à jour des playlists suivies).
+  loaded(await api("/api/current"));
+  launched({ status: {} });
+}
+
+// ---------- 1. Charger ----------
+const drop = $("#drop");
+drop.onclick = () => $("#file").click();
+$("#file").onchange = e => e.target.files[0] && readFile(e.target.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); e.stopPropagation(); loadSec.classList.remove("step-load-drag"); drop.classList.remove("over"); e.dataTransfer.files[0] && readFile(e.dataTransfer.files[0]); };
+async function readFile(f) { loaded(await api("/api/load", { filename: f.name, text: await f.text() })); $("#file").value = ""; }
+$("#url-go").onclick = async () => {
+  const url = $("#url").value.trim(); if (!url) return;
+  $("#url-go").disabled = true; $("#url-go").textContent = /soundcloud/i.test(url) ? "Lecture…" : "…";
+  const r = await api("/api/load", { url });
+  $("#url-go").disabled = false; $("#url-go").textContent = "Charger";
+  loaded(r);
+};
+$("#url").onkeydown = e => e.key === "Enter" && $("#url-go").click();
+
+// ---------- Choix de la source ----------
+const SOURCES = {
+  spotify: { label: "Lien de la playlist Spotify", ph: "https://open.spotify.com/playlist/…", csv: true,
+    hint: () => info.spotify?.connected
+      ? "Une de tes playlists, ou un album. Pour la playlist de quelqu'un d'autre, copie-la d'abord dans une des tiennes."
+      : "Connecte-toi à Spotify ci-dessus pour coller un lien, ou dépose un CSV exporté ci-dessous." },
+  deezer: { label: "Lien de la playlist Deezer", ph: "https://www.deezer.com/fr/playlist/…",
+    hint: () => "Une playlist ou un album. La playlist doit être publique (sur Deezer : ⋯ › Rendre publique). Pas besoin de compte." },
+  youtube: { label: "Lien YouTube", ph: "https://www.youtube.com/playlist?list=…",
+    hint: () => "Une playlist, un mix ou une vidéo seule. Les titres des vidéos sont nettoyés automatiquement (année, « HQ », nom de la chaîne…)." },
+  soundcloud: { label: "Lien SoundCloud", ph: "https://soundcloud.com/…/sets/…",
+    hint: () => "Une playlist, un set ou un morceau. La lecture peut prendre quelques secondes." },
+  csv: {},
+};
+let source = "";
+function pickSource(name) {
+  source = name;
+  try { localStorage.setItem("p2s-source", name); } catch (e) {}
+  $$(".src").forEach(b => { b.classList.toggle("on", b.dataset.src === name); b.setAttribute("aria-pressed", b.dataset.src === name); });
+  const cfg = SOURCES[name], link = name !== "csv";
+  $("#src-panel").classList.remove("hidden");
+  $("#src-link").classList.toggle("hidden", !link);
+  $("#src-csv").classList.toggle("hidden", link && !cfg.csv);
+  $("#csv-or").classList.toggle("hidden", !link);
+  $("#sp-box").classList.toggle("hidden", name !== "spotify");
+  if (name === "spotify") renderSpotify();
+  if (link) {
+    $("#url-label").textContent = cfg.label;
+    $("#url").placeholder = cfg.ph;
+    $("#src-hint").textContent = cfg.hint();
+    if (name !== "spotify" || info.spotify?.connected) setTimeout(() => $("#url").focus(), 0);
+  }
+}
+$$(".src").forEach(b => b.onclick = () => pickSource(b.dataset.src));
+// Un lien collé d'une autre source bascule tout seul sur le bon bouton.
+$("#url").addEventListener("input", () => {
+  const u = $("#url").value;
+  const guess = /deezer|dzr\.page/i.test(u) ? "deezer" : /spotify/i.test(u) ? "spotify" : /youtu/i.test(u) ? "youtube" : /soundcloud/i.test(u) ? "soundcloud" : "";
+  if (guess && guess !== source) { const v = u; pickSource(guess); $("#url").value = v; }
+});
+// Un CSV déposé n'importe où sur l'écran de départ est accepté.
+const loadSec = $("#step-load");
+loadSec.addEventListener("dragover", e => { e.preventDefault(); loadSec.classList.add("step-load-drag"); });
+loadSec.addEventListener("dragleave", e => { if (!loadSec.contains(e.relatedTarget)) loadSec.classList.remove("step-load-drag"); });
+loadSec.addEventListener("drop", e => { e.preventDefault(); loadSec.classList.remove("step-load-drag"); e.dataTransfer.files[0] && readFile(e.dataTransfer.files[0]); });
+
+function loaded(r) {
+  if (r.error) return toast(r.error);
+  if (player.cur !== null && r.load_id !== loadId) closePlayer();
+  tracks = r.tracks; plName = r.name; cur = r; loadId = r.load_id;
+  renderFollowBtn();
+  $("#name").value = plName; $("#limit").value = "";
+  details = r.details || {};
+  renderList(r.status || {});
+  $("#pl-listen").classList.toggle("hidden", !playQueue().length);
+  updateMeta(); updateDest();
+  $("#options").classList.remove("hidden");
+  show("#step-list");
+}
+function updateMeta() {
+  const lim = +$("#limit").value || 0, n = lim ? Math.min(lim, tracks.length) : tracks.length;
+  const total = tracks.slice(0, n).reduce((a, t) => a + (t.duration || 0), 0);
+  const h = Math.floor(total / 3600), m = Math.round((total % 3600) / 60);
+  $("#pl-name").textContent = $("#name").value || plName;
+  $("#pl-meta").textContent = `${n} morceau${n > 1 ? "x" : ""}` + (total ? ` · ${h ? h + " h " : ""}${m} min` : "");
+  const got = tracks.slice(0, n).filter(t => ["skip", "lib"].includes(lastStatusMap[t.n])).length, left = n - got;
+  $("#go").textContent = got ? (left ? `Télécharger les ${left} manquant${left > 1 ? "s" : ""}` : "Tout est déjà là · vérifier à nouveau") : `Télécharger ${n} morceau${n > 1 ? "x" : ""}`;
+  const covers = [...new Set(tracks.map(t => t.cover).filter(Boolean))].slice(0, 4);
+  const mo = $("#mosaic"); mo.innerHTML = ""; mo.classList.toggle("one", covers.length < 4);
+  (covers.length < 4 ? covers.slice(0, 1) : covers).forEach(c => mo.append(el("img", { src: c, alt: "" })));
+}
+function updateDest() { $("#dest-hint").textContent = `→ ${(settings.out || "~/Music/playlist2slsk").replace(/\/$/, "")}/${$("#name").value || plName}/`; }
+$("#limit").oninput = () => { updateMeta(); renderList({}); };
+$("#name").oninput = () => { updateMeta(); updateDest(); };
+$("#change").onclick = () => show("#step-load");
+
+// ---------- Suivre une playlist ----------
+function renderFollowBtn() {
+  const b = $("#follow");
+  b.classList.toggle("hidden", !cur.followable);
+  b.classList.toggle("on", !!cur.followed);
+  b.textContent = cur.followed ? "✓ Suivie" : "+ Suivre";
+}
+$("#follow").onclick = async () => {
+  const r = await api("/api/follow", { source: cur.source, follow: !cur.followed, name: $("#name").value.trim() || plName });
+  if (r.error) return toast(r.error);
+  cur.followed = !cur.followed; renderFollowBtn();
+  if (cur.followed) toast("Playlist suivie : retrouve-la dans l'onglet Playlists.");
+};
+const KIND = { spotify: "Spotify", deezer: "Deezer", youtube: "YouTube", soundcloud: "SoundCloud", web: "Lien" };
+function ago(ts) {
+  if (!ts) return "jamais mise à jour";
+  const m = Math.round((Date.now() / 1000 - ts) / 60);
+  if (m < 1) return "mise à jour à l'instant";
+  if (m < 60) return `mise à jour il y a ${m} min`;
+  if (m < 60 * 24) return `mise à jour il y a ${Math.round(m / 60)} h`;
+  const d = Math.round(m / 1440);
+  return d === 1 ? "mise à jour hier" : `mise à jour il y a ${d} jours`;
+}
+const KIND_ALL = { ...KIND, csv: "CSV" };
+function since_(ts) {
+  if (!ts) return "";
+  const m = Math.round((Date.now() / 1000 - ts) / 60);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return `il y a ${m} min`;
+  if (m < 1440) return `il y a ${Math.round(m / 60)} h`;
+  const d = Math.round(m / 1440);
+  return d === 1 ? "hier" : d < 31 ? `il y a ${d} jours` : new Date(ts * 1000).toLocaleDateString("fr-FR");
+}
+async function openHistory(src, btn) {
+  if (running) return toast("Attends la fin du téléchargement en cours.");
+  if (btn) { btn.disabled = true; btn.textContent = "Ouverture…"; }
+  const r = await api("/api/load", { source: src });
+  if (btn) { btn.disabled = false; btn.textContent = "Ouvrir"; }
+  if (r.error) return toast(r.error);
+  tab("dl"); $("#step-run").classList.add("hidden"); $("#change").classList.remove("hidden");
+  loaded(r);
+}
+async function renderHistory() {
+  const r = await api("/api/history"), box = $("#history");
+  box.innerHTML = "";
+  $("#hist-clear").classList.toggle("hidden", !r.history.length);
+  if (!r.history.length) { box.append(el("p", { class: "empty" }, "Rien pour l'instant : les playlists que tu charges apparaîtront ici.")); return; }
+  r.history.forEach(h => {
+    const parts = [KIND_ALL[h.kind] || "Lien", `${h.count} morceau${h.count > 1 ? "x" : ""}`];
+    if (h.have) parts.push(`${h.have} téléchargé${h.have > 1 ? "s" : ""}`);
+    parts.push(since_(h.downloaded || h.opened));
+    const meta = el("p", {}, parts.join(" · "));
+    const open = el("button", { class: "btn", type: "button" }, "Ouvrir");
+    open.onclick = () => openHistory(h.source, open);
+    const acts = el("div", { class: "acts" }, open);
+    if (h.followable && !h.followed) {
+      const f = el("button", { class: "link", type: "button" }, "+ Suivre");
+      f.onclick = async () => { const res = await api("/api/follow", { source: h.source, name: h.folder || h.name }); if (res.error) return toast(res.error); renderFollows(); renderHistory(); };
+      acts.append(f);
+    } else if (h.followed) acts.append(el("span", { class: "hist-tag" }, "Suivie"));
+    const rm = el("button", { class: "link", type: "button", title: "Retirer de l'historique (les fichiers restent)" }, "Retirer");
+    rm.onclick = async () => { await api("/api/forget", { source: h.source }); renderHistory(); };
+    acts.append(rm);
+    const cov = h.cover ? el("img", { class: "cov", src: h.cover, alt: "" }) : el("div", { class: "cov" });
+    box.append(el("div", { class: "fl" }, cov, el("div", { style: "min-width:0" }, el("b", {}, h.folder || h.name), meta), acts));
+  });
+}
+$("#hist-clear").onclick = async () => {
+  if (!confirm("Vider tout l'historique ? Les fichiers téléchargés ne sont pas touchés.")) return;
+  await api("/api/forget", {}); renderHistory();
+};
+$("#pl-listen").onclick = () => { const q = playQueue(); if (q.length) playFrom(q[0]); };
+
+async function renderFollows() {
+  const r = await api("/api/follows"), box = $("#follows");
+  box.innerHTML = "";
+  const busy = r.sync.active || running;
+  $("#sync-all").disabled = busy || !r.follows.length;
+  $("#sync-all").textContent = r.sync.active ? `Mise à jour ${r.sync.index} / ${r.sync.total}…` : "Tout mettre à jour";
+  if (!r.follows.length) {
+    box.append(el("p", { class: "empty" }, "Aucune playlist suivie pour l'instant. Charge un lien Spotify, Deezer, YouTube ou SoundCloud, puis clique sur « + Suivre »."));
+    return;
+  }
+  r.follows.forEach(f => {
+    const meta = el("p", {}, `${KIND[f.kind] || "Lien"} · ${f.count ? f.count + " morceaux · " : ""}${ago(f.synced)}`);
+    if (f.error) meta.append(" · ", el("span", { class: "err", title: f.error }, "erreur"));
+    else if (f.synced) {
+      if (f.new) meta.append(" · ", el("span", { class: "new" }, `+${f.new} nouveau${f.new > 1 ? "x" : ""}`));
+      if (f.missing) meta.append(` · ${f.missing} introuvable${f.missing > 1 ? "s" : ""}`);
+    }
+    const up = el("button", { class: "btn" }, "Mettre à jour");
+    up.disabled = busy;
+    up.onclick = () => sync(f.source);
+    const rm = el("button", { class: "link", title: "Ne plus suivre" }, "Retirer");
+    rm.onclick = async () => {
+      if (!confirm(`Ne plus suivre « ${f.name} » ? Les fichiers déjà téléchargés restent en place.`)) return;
+      await api("/api/follow", { source: f.source, follow: false });
+      if (cur.source === f.source) { cur.followed = false; renderFollowBtn(); }
+      renderFollows();
+    };
+    const cov = f.cover ? el("img", { class: "cov", src: f.cover, alt: "" }) : el("div", { class: "cov" });
+    box.append(el("div", { class: "fl" + (r.sync.active && r.sync.current === f.name ? " busy" : "") },
+      cov, el("div", { style: "min-width:0" }, el("b", {}, f.name), meta), el("div", { class: "acts" }, up, rm)));
+  });
+}
+async function sync(source) {
+  clearTimeout(saveTimer);
+  const r = await api("/api/sync", source ? { source } : {});
+  if (r.error) return toast(r.error);
+  tab("dl");
+  setTimeout(attach, 400);   // laisse le serveur charger la première playlist
+}
+$("#sync-all").onclick = () => sync();
+
+// ---------- Lecture des infos sockseek ----------
+const REASONS = {
+  private: ["Seulement en partage privé", "Les fichiers existent, mais leurs propriétaires ne les partagent qu'avec leurs amis."],
+  none: ["Aucun résultat sur Soulseek", "Personne ne le partage sous ce nom. La recherche élargie peut aider, sinon vérifie l'orthographe dans le CSV."],
+  filtered: ["Trouvé, mais refusé par tes filtres", "Des fichiers existent mais ne respectent pas le format ou le débit demandé. Assouplis-les dans les réglages."],
+  failed: ["Trouvé, mais le téléchargement a échoué", "Les sources étaient hors ligne, saturées ou trop lentes. Réessaie plus tard."],
+  invalid: ["Titre impossible à chercher", "Le titre ou l'artiste est vide ou ne contient que des caractères spéciaux."],
+  stopped: ["Arrêté avant la fin", "Relance pour terminer, les morceaux déjà récupérés sont gardés."],
+  unknown: ["Introuvable", "sockseek n'a pas donné plus de détails : regarde le journal technique."],
+};
+function reasonKey(st, d = {}) {
+  if (st === "stopped") return "stopped";
+  switch (d.reason) {
+    case "NoSearchResults": return d.locked ? "private" : "none";
+    case "NoMatchingResults": return "filtered";
+    case "OutOfDownloadRetries": case "AllDownloadsFailed": return "failed";
+    case "InvalidSearchString": return "invalid";
+    case "Cancelled": return "stopped";
+  }
+  return "unknown";
+}
+function fmtLabel(d) {
+  if (!d || !d.ext) return "";
+  const ext = d.ext.toUpperCase();
+  return ext === "MP3" && d.bitrate ? `MP3 ${d.bitrate}` : ext;
+}
+function qualityText(q) {
+  const khz = q.cutoff ? (q.cutoff / 1000).toFixed(1).replace(".", ",") + " kHz" : "";
+  if (q.verdict === "fake") return `Coupure nette à ${khz} : très probablement un MP3 réencodé en FLAC`;
+  if (q.rate > 48000) return `Coupure à ${khz} : sans doute un CD « gonflé » en haute résolution`;
+  return `Coupure à ${khz} : peut-être un MP3 320 réencodé, ou un master qui coupe tôt`;
+}
+const mo = b => b >= 1e9 ? (b / 1e9).toFixed(1).replace(".", ",") + " Go" : Math.round(b / 1e6) + " Mo";
+let details = {};
+
+function renderList(status) {
+  lastStatusMap = status;
+  const lim = +$("#limit").value || 0, box = $("#tracks");
+  box.innerHTML = "";
+  tracks.forEach((t, i) => {
+    const st = status[t.n], out = lim && i >= lim, d = details[t.n] || {};
+    const stEl = el("div", { class: "st " + (st || "") });
+    if (st === "queued") stEl.append(el("div", { class: "spin", style: "opacity:.35;animation:none" }));
+    else if (st === "search") stEl.append(el("div", { class: "spin", style: "opacity:.6" }));
+    else if (st === "dl") stEl.append(el("div", { class: "spin" }));
+    else if (ICONS[st]) stEl.innerHTML = ICONS[st];
+    if (st === "skip") stEl.title = "Déjà téléchargé";
+    if (st === "lib") stEl.title = "Déjà dans ta bibliothèque";
+    if (st === "miss") stEl.title = "Introuvable";
+    const art = t.cover ? el("img", { class: "art", src: t.cover, alt: "", loading: "lazy" }) : el("div", { class: "art" });
+    let sub = el("span", {}, [t.artist, t.album].filter(Boolean).join(" · "));
+    if (st === "miss" || st === "stopped") sub = el("span", { class: "err" }, `${t.artist} · ${REASONS[reasonKey(st, d)][0]}`);
+    else if (st === "search") sub = el("span", { class: "live" }, `${t.artist} · recherche…`);
+    else if (st === "dl") sub = el("span", { class: "live" }, `${t.artist} · téléchargement${d.user ? " depuis " + d.user : ""}…`);
+    else if (st === "lib") sub = el("span", { title: d.path || "" }, `${t.artist} · déjà dans ta bibliothèque`);
+    else if (st === "skip") sub = el("span", {}, `${t.artist} · déjà téléchargé`);
+    const label = st === "ok" || st === "dl" ? fmtLabel(d) : "";
+    const q = d.quality && d.quality.verdict !== "ok" ? d.quality : null;
+    const tip = [q ? qualityText(q) : "", d.size ? mo(d.size) : "", d.user || ""].filter(Boolean).join(" · ");
+    const right = label ? el("span", { class: "badge" + (q ? (q.verdict === "fake" ? " bad" : " warn") : /FLAC|WAV|AIFF/.test(label) ? " flac" : ""), title: tip }, (q ? "⚠ " : "") + label) : fmt(t.duration);
+    const fixable = !running && (st === "miss" || st === "stopped");
+    const playable = ["ok", "skip", "lib"].includes(st) && d.path;
+    const isCur = player.cur === t.n;
+    const row = el("div", { class: "tr" + (out || ((st === "skip" || st === "lib") && !isCur) || st === "stopped" ? " dim" : "") + (fixable ? " fixable" : "") + (isCur ? " playing" : ""), id: "t" + t.n },
+      el("div", { class: "n" }, String(t.n)), art,
+      el("div", { class: "t" }, el("b", {}, t.title), sub),
+      el("div", { class: "d" }, right, settings.bandcamp !== false ? bandcampBtn(t) : ""), stEl);
+    if (playable) {
+      const pb = el("button", { class: "play", type: "button", "aria-label": `Écouter ${t.title}` });
+      pb.innerHTML = isCur && !player.audio.paused ? '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+      pb.onclick = e => { e.stopPropagation(); isCur ? togglePlay() : playFrom(t.n); };
+      row.append(pb);
+    }
+    if (fixable) { row.title = "Corriger et chercher à nouveau"; row.onclick = () => { openFix = openFix === t.n ? null : t.n; renderList(lastStatusMap); }; }
+    box.append(row);
+    if (fixable && openFix === t.n) box.append(fixEditor(t));
+  });
+}
+
+// ---------- Rattraper un introuvable : corriger puis relancer ce seul morceau ----------
+function fixEditor(t) {
+  const artist = el("input", { type: "text", value: t.artist, spellcheck: "false" });
+  const title = el("input", { type: "text", value: t.title, spellcheck: "false" });
+  const wide = el("input", { type: "checkbox" }); wide.checked = true;
+  const go = el("button", { class: "primary" }, "Chercher à nouveau");
+  const cancel = el("button", { class: "btn" }, "Annuler");
+  const box = el("div", { class: "fix" },
+    el("div", { class: "grid2" },
+      el("div", {}, el("label", { class: "lbl" }, "Artiste"), artist),
+      el("div", {}, el("label", { class: "lbl" }, "Titre"), title)),
+    el("p", { class: "hint", style: "margin:0" }, "Corrige ce qui cloche (faute, mention en trop, mauvais artiste). La correction est retenue pour les prochaines fois."),
+    el("div", { class: "fix-actions" }, el("label", { class: "check" }, wide, " Recherche élargie"), cancel, go));
+  box.onclick = e => e.stopPropagation();
+  cancel.onclick = () => { openFix = null; renderList(lastStatusMap); };
+  const submit = async () => {
+    go.disabled = true;
+    const r = await api("/api/edit", { n: t.n, artist: artist.value, title: title.value });
+    if (r.error) { go.disabled = false; return toast(r.error); }
+    Object.assign(t, r.track);
+    openFix = null;
+    start({ only: [t.n], ...(wide.checked ? { match: "wide" } : {}) });
+  };
+  go.onclick = submit;
+  for (const i of [artist, title]) i.onkeydown = e => e.key === "Enter" && submit();
+  setTimeout(() => { title.focus(); box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, 0);
+  return box;
+}
+
+// ---------- 2. Lancer ----------
+async function start(overrides = {}) {
+  clearTimeout(saveTimer);
+  const body = { ...settings, name: $("#name").value.trim(), limit: +$("#limit").value || 0, ...overrides };
+  launched(await api("/api/start", body));
+}
+async function replace(positions) {
+  clearTimeout(saveTimer);
+  launched(await api("/api/replace", { positions, settings, name: $("#name").value.trim(), limit: +$("#limit").value || 0 }));
+}
+function launched(r) {
+  if (r.error) return toast(r.error);
+  since = 0; $("#log").textContent = "";
+  $("#options").classList.add("hidden"); $("#change").classList.add("hidden");
+  show("#step-list"); $("#step-run").classList.remove("hidden");
+  $("#running").classList.remove("hidden"); $("#finished").classList.add("hidden");
+  $("#stop").disabled = false;
+  running = true; openFix = null;
+  renderList(r.status);
+  poll();
+}
+$("#go").onclick = () => start();
+$("#stop").onclick = async () => { $("#stop").disabled = true; await api("/api/stop", {}); };
+
+let lastStatus = "", syncState = {}, wasSync = false;
+async function poll() {
+  clearTimeout(timer);
+  let s = await api("/api/status?since=" + since);
+  if (s.load_id !== loadId || s.job_id !== jobId) {
+    // nouvelle playlist (mise à jour des suivies) ou nouveau lancement : on se recale
+    if (s.load_id !== loadId) { const c = await api("/api/current"); tracks = c.tracks; plName = c.name; cur = c; loadId = c.load_id; $("#name").value = plName; renderFollowBtn(); updateMeta(); }
+    jobId = s.job_id; since = 0; $("#log").textContent = ""; lastStatus = "";
+    s = await api("/api/status?since=0");
+  }
+  syncState = s.sync;
+  since = s.next;
+  if (s.lines.length) {
+    const log = $("#log"), atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+    log.textContent += s.lines.join("\n") + "\n";
+    if (atBottom) log.scrollTop = log.scrollHeight;
+    $("#last").textContent = s.lines[s.lines.length - 1];
+  }
+  details = s.details || {};
+  const key = JSON.stringify([s.status, details]);
+  if (key !== lastStatus) { lastStatus = key; renderList(s.status); }
+  const c = s.counts, total = Object.keys(s.status).length;
+  const todo = total - (c.skip || 0), done = (c.ok || 0) + (c.miss || 0), dl = c.dl || 0;
+  const searched = Object.values(details).filter(d => d.outcome).length;
+  const posting = done > 0;
+  $("#phase").textContent = (s.sync.active ? `Mise à jour ${s.sync.index} / ${s.sync.total} · ` : "") + (posting ? "Renommage, tags et jaquettes…" : "Recherche et téléchargement sur Soulseek…");
+  const got = Math.max(dl, searched);
+  $("#count").textContent = posting ? `${done} / ${todo}` : (got ? `${got} / ${todo} traités` : `${todo} à chercher`);
+  const bar = $("#bar"), frac = posting ? done / todo : got / Math.max(todo, 1);
+  bar.classList.toggle("indet", !posting && !got);
+  bar.querySelector("i").style.width = Math.round(frac * 100) + "%";
+  if (s.running || s.sync.active) timer = setTimeout(poll, 700);
+  else {
+    running = false; renderList(s.status); finish(s);
+    if (wasSync) {
+      const n = s.sync.added;
+      toast(n ? `Playlists à jour : ${n} nouveau${n > 1 ? "x" : ""} morceau${n > 1 ? "x" : ""}.` : "Playlists à jour : rien de nouveau.");
+      if (wasSync.total > 1) tab("follows");
+      wasSync = false;
+    }
+  }
+  if (s.sync.active) wasSync = s.sync;
+}
+function finish(s) {
+  const c = s.counts, total = Object.keys(s.status).length;
+  const have = (c.ok || 0) + (c.skip || 0) + (c.lib || 0), miss = c.miss || 0;
+  $("#running").classList.add("hidden"); $("#finished").classList.remove("hidden");
+  $("#res-big").textContent = `${have} / ${total}`;
+  let sub = s.stopped ? "Arrêté. " : "";
+  sub += miss ? `${miss} introuvable${miss > 1 ? "s" : ""}. ` : (s.stopped ? "" : "Tout est là. ");
+  if (c.skip) sub += `${c.skip} déjà présent${c.skip > 1 ? "s" : ""}. `;
+  if (c.lib) sub += `${c.lib} déjà dans ta bibliothèque. `;
+  if (miss) sub += "Clique sur un morceau en rouge pour le corriger. ";
+  $("#res-sub").textContent = sub + s.dest_display;
+  renderReport(s);
+  $("#open").dataset.path = s.dest;
+  $("#listen").classList.toggle("hidden", !playQueue().length);
+  $("#pl-listen").classList.toggle("hidden", !playQueue().length);
+  $("#retry").classList.toggle("hidden", !(miss || c.stopped));
+  $("#retry").textContent = settings.match === "wide" ? "Réessayer les manquants" : "Réessayer en recherche élargie";
+}
+function renderReport(s) {
+  const box = $("#report"); box.innerHTML = "";
+  const byPos = Object.entries(s.status);
+  // Formats récupérés
+  const formats = {}; let size = 0;
+  for (const [n, st] of byPos) if (st === "ok") {
+    const d = details[n] || {}, l = fmtLabel(d) || "Autre";
+    formats[l] = (formats[l] || 0) + 1; size += d.size || 0;
+  }
+  const chips = el("div", { class: "chips" });
+  Object.entries(formats).sort((a, b) => b[1] - a[1]).forEach(([l, n]) => chips.append(el("span", { class: "chip" }, el("b", {}, String(n)), " " + l)));
+  if (size) chips.append(el("span", { class: "chip" }, mo(size)));
+  if (chips.children.length) box.append(chips);
+  // Introuvables, regroupés par cause
+  const groups = {};
+  for (const [n, st] of byPos) if (st === "miss" || st === "stopped") {
+    const k = reasonKey(st, details[n]);
+    (groups[k] = groups[k] || []).push(tracks.find(t => String(t.n) === n));
+  }
+  const keys = Object.keys(groups);
+  const wrap = el("div", { class: "groups" });
+  // FLAC suspects
+  const sus = byPos.filter(([n, st]) => st === "ok" && details[n]?.quality && details[n].quality.verdict !== "ok").map(([n]) => +n);
+  if (sus.length) {
+    const ul = el("ul");
+    sus.forEach(n => { const t = tracks.find(t => t.n === n); if (t) ul.append(el("li", { title: qualityText(details[n].quality) }, t.title, el("i", {}, ` · ${t.artist} · coupure ${(details[n].quality.cutoff / 1000).toFixed(1).replace(".", ",")} kHz`))); });
+    const fakes = sus.filter(n => details[n].quality.verdict === "fake");
+    const btn = el("button", { class: "btn" }, fakes.length ? `Remplacer ${fakes.length === 1 ? "le faux FLAC" : `les ${fakes.length} faux FLAC`}` : "Chercher d'autres versions");
+    btn.onclick = () => replace(fakes.length ? fakes : sus);
+    wrap.append(el("div", { class: "group warn" },
+      el("div", { class: "group-head" }, "FLAC suspects", el("span", {}, String(sus.length))),
+      el("p", {}, "Leur spectre s'arrête net, comme celui d'un MP3 : ce ne sont sans doute pas de vrais fichiers sans perte. Le bouton les supprime et cherche une autre source."),
+      ul, btn));
+  }
+  // Exports DJ
+  const ex = s.exports || {};
+  if (ex.traktor || ex.rekordbox) {
+    const box2 = el("div", { class: "exports" });
+    const row = (logo, color, title, text, path) => {
+      const b = el("button", { class: "btn" }, "Afficher");
+      b.onclick = () => api("/api/reveal", { path });
+      box2.append(el("div", { class: "export" }, el("div", { class: "logo-dj", style: `background:${color}` }, logo),
+        el("div", { class: "grow" }, el("b", {}, title), el("p", {}, text)), b));
+    };
+    if (ex.traktor) row("T", "#2b7de9", "Playlist Traktor prête", "Dans Traktor : clic droit sur Playlists, Import Playlist, puis choisis ce fichier .nml.", ex.traktor);
+    if (ex.rekordbox) row("R", "#3a3a3c", "Ajoutée au rekordbox.xml", "Dans Rekordbox, elle apparaît sous « rekordbox xml › playlist2slsk ». Réglage à faire une seule fois : voir Réglages › DJ.", ex.rekordbox);
+    box.append(box2);
+  }
+  if (!keys.length && !sus.length) return;
+  keys.sort((a, b) => groups[b].length - groups[a].length).forEach(k => {
+    const ul = el("ul");
+    groups[k].filter(Boolean).forEach(t => ul.append(el("li", {}, t.title, el("i", {}, " · " + t.artist))));
+    wrap.append(el("div", { class: "group" },
+      el("div", { class: "group-head" }, REASONS[k][0], el("span", {}, String(groups[k].length))),
+      el("p", {}, REASONS[k][1]), ul));
+  });
+  box.append(wrap);
+}
+$("#open").onclick = async () => { const r = await api("/api/open", { path: $("#open").dataset.path }); if (r.error) toast(r.error); };
+$("#retry").onclick = () => start({ match: "wide", only: Object.keys(lastStatusMap).filter(n => ["miss", "stopped"].includes(lastStatusMap[n])).map(Number) });
+$("#again").onclick = () => { $("#step-run").classList.add("hidden"); $("#change").classList.remove("hidden"); $("#options").classList.remove("hidden"); show("#step-load"); };
+for (const id of ["#toggle-log", "#toggle-log2"]) $(id).onclick = () => {
+  const log = $("#log"), hid = log.classList.toggle("hidden");
+  $("#toggle-log").textContent = hid ? "Afficher le journal" : "Masquer le journal";
+  $("#toggle-log2").textContent = hid ? "Afficher le journal technique" : "Masquer le journal technique";
+  if (!hid) log.scrollTop = log.scrollHeight;
+};
+// ---------- Exportify : on ouvre leur site et on guette le CSV dans Téléchargements ----------
+let exportWatch = null;
+function stopExportWatch() { clearTimeout(exportWatch); exportWatch = null; $("#exportify-wait").classList.add("hidden"); }
+$("#exportify-go").onclick = () => {
+  window.open("https://exportify.app", "_blank", "noopener");
+  const since = Date.now() / 1000 - 2, until = Date.now() + 15 * 60 * 1000;
+  $("#exportify-wait").classList.remove("hidden");
+  const tick = async () => {
+    if (Date.now() > until) { stopExportWatch(); return toast("Aucun CSV reçu : relance l'export ou dépose le fichier."); }
+    const r = await api("/api/downloads-csv?since=" + since);
+    if (r.error) { stopExportWatch(); return toast(r.error); }
+    if (r.file) {
+      stopExportWatch();
+      const res = await api("/api/load", { download: r.file });
+      if (!res.error) toast(`« ${r.file} » chargé depuis Téléchargements.`);
+      return loaded(res);
+    }
+    exportWatch = setTimeout(tick, 1500);
+  };
+  clearTimeout(exportWatch); tick();
+};
+$("#exportify-stop").onclick = stopExportWatch;
+
+// ---------- Bandcamp : recherche du morceau pour l'acheter ----------
+function bandcampUrl(t) {
+  const artist = (t.artist || "").split(/,\s*/)[0];
+  const title = (t.title || "").replace(/\s*[\(\[][^\)\]]*\boriginal\s+(mix|version)\b[^\)\]]*[\)\]]/ig, "").replace(/\s+[-–]\s+original\s+(mix|version)\s*$/i, "").trim();
+  return "https://bandcamp.com/search?item_type=t&q=" + encodeURIComponent(`${artist} ${title}`.trim());
+}
+function bandcampBtn(t) {
+  const a = el("a", { class: "bc-btn", href: bandcampUrl(t), target: "_blank", rel: "noopener", title: `Chercher « ${t.title} » sur Bandcamp pour l'acheter`, "aria-label": `Acheter ${t.title} sur Bandcamp` }, "Bandcamp");
+  a.onclick = e => e.stopPropagation();
+  return a;
+}
+
+// ---------- Lecteur : écouter les morceaux téléchargés ----------
+const player = { audio: new Audio(), cur: null };
+player.audio.preload = "auto";
+const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+function playQueue() {
+  return tracks.filter(t => ["ok", "skip", "lib"].includes(lastStatusMap[t.n]) && details[t.n]?.path).map(t => t.n);
+}
+function playFrom(n) {
+  const t = tracks.find(t => t.n === n); if (!t) return;
+  player.cur = n;
+  player.audio.src = `/api/audio?n=${n}&l=${loadId}`;
+  player.audio.play().catch(() => toast("Lecture impossible : format non pris en charge par le navigateur (AIFF, ALAC…)."));
+  $("#pl-title").textContent = t.title;
+  $("#pl-bc").href = bandcampUrl(t); $("#pl-bc").classList.toggle("hidden", settings.bandcamp === false);
+  $("#pl-artist").textContent = t.artist + (fmtLabel(details[n]) ? " · " + fmtLabel(details[n]) : "");
+  const c = $("#pl-cov"); if (t.cover) { c.src = t.cover; c.style.visibility = ""; } else { c.removeAttribute("src"); c.style.visibility = "hidden"; }
+  $("#player").classList.remove("hidden"); document.body.classList.add("has-player");
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.album || plName, artwork: t.cover ? [{ src: t.cover }] : [] });
+  }
+  renderList(lastStatusMap);
+}
+function step(dir) {
+  const q = playQueue(); if (!q.length) return;
+  const i = q.indexOf(player.cur);
+  if (dir < 0 && player.audio.currentTime > 3) { player.audio.currentTime = 0; return; }
+  const next = q[i + dir];
+  if (next !== undefined) playFrom(next);
+  else if (dir > 0) { player.audio.pause(); player.audio.currentTime = 0; }
+}
+function togglePlay() {
+  if (player.cur === null) { const q = playQueue(); if (q.length) playFrom(q[0]); return; }
+  player.audio.paused ? player.audio.play() : player.audio.pause();
+}
+function closePlayer() {
+  player.audio.pause(); player.audio.removeAttribute("src"); player.audio.load(); player.cur = null;
+  $("#player").classList.add("hidden"); document.body.classList.remove("has-player");
+  renderList(lastStatusMap);
+}
+const mmss = x => isFinite(x) ? `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}` : "0:00";
+player.audio.addEventListener("timeupdate", () => {
+  const a = player.audio, seek = $("#pl-seek");
+  $("#pl-cur").textContent = mmss(a.currentTime); $("#pl-dur").textContent = mmss(a.duration);
+  if (!seek.matches(":active") && a.duration) { seek.value = Math.round(a.currentTime / a.duration * 1000); seek.style.setProperty("--p", seek.value / 10 + "%"); }
+});
+for (const ev of ["play", "pause"]) player.audio.addEventListener(ev, () => {
+  $("#pl-play").innerHTML = player.audio.paused ? ICON_PLAY : ICON_PAUSE;
+  $("#pl-play").setAttribute("aria-label", player.audio.paused ? "Lecture" : "Pause");
+  renderList(lastStatusMap);
+});
+player.audio.addEventListener("ended", () => step(1));
+$("#pl-seek").addEventListener("input", e => {
+  const a = player.audio; e.target.style.setProperty("--p", e.target.value / 10 + "%");
+  if (a.duration) a.currentTime = e.target.value / 1000 * a.duration;
+});
+$("#pl-play").onclick = togglePlay;
+$("#pl-prev").onclick = () => step(-1);
+$("#pl-next").onclick = () => step(1);
+$("#pl-close").onclick = closePlayer;
+$("#listen").onclick = () => { const q = playQueue(); if (q.length) playFrom(q[0]); };
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("play", () => player.audio.play());
+  navigator.mediaSession.setActionHandler("pause", () => player.audio.pause());
+  navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
+  navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
+}
+// Barre d'espace : lecture/pause, sauf quand on tape dans un champ.
+document.addEventListener("keydown", e => {
+  if (e.code !== "Space" || player.cur === null || e.target.closest("input, textarea, select, button")) return;
+  e.preventDefault(); togglePlay();
+});
+
+// ---------- Spotify : connexion et liste des playlists (comme Exportify) ----------
+const copyBtn = text => {
+  const b = el("button", { class: "btn", type: "button" }, "Copier");
+  b.onclick = async () => { try { await navigator.clipboard.writeText(text); b.textContent = "Copié"; } catch (e) { toast("Copie impossible : sélectionne le texte."); } setTimeout(() => b.textContent = "Copier", 1500); };
+  return b;
+};
+async function spotifyConnect() {
+  clearTimeout(saveTimer);
+  await api("/api/settings", settings);
+  const r = await api("/api/spotify/login", {});
+  if (r.error) return toast(r.error);
+  location.href = r.url;
+}
+async function spotifyLogout() {
+  await api("/api/spotify/logout", {});
+  info = await api("/api/info");
+  renderSpotifySettings(); if (source === "spotify") pickSource("spotify");
+}
+function spotifySetup() {
+  const cid = el("input", { type: "text", spellcheck: "false", autocomplete: "off", placeholder: "Client ID (32 caractères)" });
+  cid.value = settings.spotify_id || "";
+  cid.oninput = () => setSetting("spotify_id", cid.value.trim());
+  const go = el("button", { class: "primary sp-green", type: "button" }, "Se connecter à Spotify");
+  go.onclick = () => cid.value.trim() ? spotifyConnect() : (toast("Colle d'abord le Client ID."), cid.focus());
+  const step = (n, ...kids) => el("li", {}, el("span", { class: "sp-n" }, String(n)), el("div", {}, ...kids));
+  const redirect = el("code", {}, info.spotify.redirect);
+  return el("div", { class: "sp-setup" },
+    el("p", { class: "sp-lead" }, "À faire une seule fois : créer ta clé d'accès Spotify (2 minutes, compte Premium)."),
+    el("ol", {},
+      step(1, "Ouvre ", el("a", { href: "https://developer.spotify.com/dashboard", target: "_blank", rel: "noopener" }, "developer.spotify.com/dashboard"), ", connecte-toi et clique sur « Create app »."),
+      step(2, "Donne-lui un nom (ex. playlist2slsk). Dans « Redirect URIs », colle cette adresse puis clique sur « Add » :",
+        el("div", { class: "row sp-uri" }, redirect, copyBtn(info.spotify.redirect))),
+      step(3, "Coche « Web API », accepte les conditions et enregistre (« Save »)."),
+      step(4, "Copie le « Client ID » affiché sur la page de l'app et colle-le ici :",
+        el("div", { class: "row sp-uri" }, cid, go))));
+}
+async function renderSpotify() {
+  const box = $("#sp-box"); box.innerHTML = "";
+  if (!settings.spotify_id) { box.append(spotifySetup(), el("div", { class: "or" }, "ou colle un lien")); return; }
+  if (!info.spotify.connected) {
+    const go = el("button", { class: "primary sp-green big", type: "button" }, "Se connecter à Spotify");
+    go.onclick = spotifyConnect;
+    box.append(el("div", { class: "sp-connect" }, go, el("p", { class: "hint" }, "Tu valides sur la page Spotify puis tu reviens ici automatiquement. Seule la lecture de tes playlists est demandée.")),
+      el("div", { class: "or" }, "ou colle un lien"));
+    return;
+  }
+  const head = el("div", { class: "sp-head" }, el("span", {}, "Connecté à Spotify", info.spotify.user ? el("b", {}, " · " + info.spotify.user) : ""));
+  const out = el("button", { class: "link", type: "button" }, "Se déconnecter"); out.onclick = spotifyLogout; head.append(out);
+  const grid = el("div", { class: "sp-grid" }, el("p", { class: "hint" }, "Chargement de tes playlists…"));
+  box.append(head, grid, el("div", { class: "or" }, "ou colle un lien"));
+  const r = await api("/api/spotify/playlists");
+  if (!r.connected) { info.spotify.connected = false; if (r.error) toast(r.error); return renderSpotify(); }
+  grid.innerHTML = "";
+  if (r.error) grid.append(el("p", { class: "hint" }, r.error));
+  const card = (name, sub, img, url, mine = true, liked = false) => {
+    const b = el("button", { class: "sp-pl" + (mine ? "" : " other"), type: "button", title: mine ? "Charger cette playlist" : "Playlist d'un autre compte : Spotify n'en donne pas le contenu. Copie-la dans une de tes playlists." },
+      img ? el("img", { src: img, alt: "", loading: "lazy" }) : el("span", { class: "sp-cov" + (liked ? " liked" : "") }, liked ? "♥" : "♪"),
+      el("span", { class: "sp-t" }, el("b", {}, name), el("small", {}, sub)));
+    b.onclick = async () => {
+      if (!mine) return toast("Spotify ne donne pas le contenu des playlists des autres : copie-la d'abord dans une des tiennes.");
+      b.disabled = true; b.querySelector("small").textContent = "Lecture…";
+      const res = await api("/api/load", { url });
+      b.disabled = false; b.querySelector("small").textContent = sub;
+      loaded(res);
+    };
+    return b;
+  };
+  grid.append(card("Titres likés", "Tes favoris", "", "spotify:liked", true, true));
+  r.playlists.forEach(p => grid.append(card(p.name, `${p.count} titre${p.count > 1 ? "s" : ""}${p.mine ? "" : " · de " + p.owner}`, p.image, "https://open.spotify.com/playlist/" + p.id, p.mine)));
+}
+function renderSpotifySettings() {
+  const box = $("#sp-settings"); box.innerHTML = "";
+  const cid = el("input", { type: "text", spellcheck: "false", autocomplete: "off" });
+  cid.value = settings.spotify_id || ""; cid.oninput = () => setSetting("spotify_id", cid.value.trim());
+  const status = info.spotify.connected
+    ? el("div", { class: "row", style: "align-items:center;gap:12px" }, el("span", {}, "Connecté", info.spotify.user ? el("b", {}, " · " + info.spotify.user) : ""), (() => { const b = el("button", { class: "btn", type: "button" }, "Se déconnecter"); b.onclick = spotifyLogout; return b; })())
+    : (() => { const b = el("button", { class: "primary sp-green", type: "button" }, "Se connecter à Spotify"); b.onclick = () => settings.spotify_id ? spotifyConnect() : toast("Colle d'abord le Client ID."); return b; })();
+  box.append(el("div", { class: "stack" },
+    el("div", {}, el("label", { class: "lbl" }, "Client ID de ton app Spotify"), cid),
+    el("div", {}, el("label", { class: "lbl" }, "Redirect URI à déclarer dans l'app"), el("div", { class: "row sp-uri" }, el("code", {}, info.spotify.redirect), copyBtn(info.spotify.redirect))),
+    status,
+    el("p", { class: "hint" }, "Crée l'app sur developer.spotify.com/dashboard (compte Premium requis par Spotify). Spotify ne donne le contenu que de tes playlists : pour celle de quelqu'un d'autre, copie-la d'abord dans une des tiennes.")));
+}
+
+boot();
+</script>
+</body>
+</html>

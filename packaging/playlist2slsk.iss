@@ -1,0 +1,45 @@
+; Installateur Windows (Inno Setup). Construit par GitHub Actions après PyInstaller.
+#define AppVer GetEnv("APP_VERSION")
+#if AppVer == ""
+  #define AppVer "1.0"
+#endif
+
+[Setup]
+AppId={{8F5B3C2A-6D41-4E8B-9A57-2C1F0B7E3D19}
+AppName=Playlist2Slsk
+AppVersion={#AppVer}
+AppPublisher=Playlist2Slsk
+DefaultDirName={localappdata}\Programs\Playlist2Slsk
+DefaultGroupName=Playlist2Slsk
+DisableProgramGroupPage=yes
+DisableDirPage=yes
+PrivilegesRequired=lowest
+OutputDir=..\dist
+OutputBaseFilename=Playlist2Slsk-Windows-Setup
+SetupIconFile=icon.ico
+UninstallDisplayIcon={app}\Playlist2Slsk.exe
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+CloseApplications=yes
+
+[Languages]
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+
+[Files]
+Source: "..\dist\Playlist2Slsk\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\_internal"
+
+[Icons]
+Name: "{autoprograms}\Playlist2Slsk"; Filename: "{app}\Playlist2Slsk.exe"
+Name: "{autodesktop}\Playlist2Slsk"; Filename: "{app}\Playlist2Slsk.exe"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\Playlist2Slsk.exe"; Description: "{cm:LaunchProgram,Playlist2Slsk}"; Flags: nowait postinstall skipifsilent

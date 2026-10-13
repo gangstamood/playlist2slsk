@@ -1,0 +1,85 @@
+name: Installateurs
+
+# À chaque envoi sur main : les installateurs sont dans l'onglet Actions (section Artifacts).
+# Avec un tag v1.0, v1.1… : ils sont aussi publiés dans une Release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15          # Apple Silicon (M1, M2…)
+            target: osx-arm64
+            label: Mac-AppleSilicon
+          - runner: macos-15-intel    # anciens Mac Intel
+            target: osx-x64
+            label: Mac-Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r packaging/requirements-app.txt
+      - run: packaging/build.sh ${{ matrix.target }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPOTIFY_CLIENT_ID: ${{ vars.SPOTIFY_CLIENT_ID }}
+      - name: Image disque (.dmg)
+        run: |
+          mkdir -p build/dmg
+          cp -R dist/Playlist2Slsk.app build/dmg/
+          ln -s /Applications build/dmg/Applications
+          hdiutil create -volname Playlist2Slsk -srcfolder build/dmg -ov -format UDZO \
+            "dist/Playlist2Slsk-${{ matrix.label }}.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Playlist2Slsk-${{ matrix.label }}
+          path: dist/Playlist2Slsk-${{ matrix.label }}.dmg
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Playlist2Slsk-${{ matrix.label }}.dmg
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r packaging/requirements-app.txt
+      - run: packaging/build.sh win-x64
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPOTIFY_CLIENT_ID: ${{ vars.SPOTIFY_CLIENT_ID }}
+      - name: Installateur (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          } else { $iscc = "iscc" }
+          $env:APP_VERSION = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.${{ github.run_number }}" }
+          & $iscc packaging\playlist2slsk.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Playlist2Slsk-Windows
+          path: dist/Playlist2Slsk-Windows-Setup.exe
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Playlist2Slsk-Windows-Setup.exe
