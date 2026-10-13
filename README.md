@@ -123,7 +123,7 @@ Pour publier une version : créer un tag `v1.0`, `v1.1`… Les installateurs son
 - Mac : ouvrir le .dmg, glisser l'appli dans Applications, l'ouvrir une fois, puis Réglages Système › Confidentialité et sécurité › « Ouvrir quand même ».
 - Windows : à l'écran bleu « Windows a protégé votre ordinateur », cliquer « Informations complémentaires » › « Exécuter quand même ».
 
-**Spotify pour les amis.** Le Client ID de l'app Spotify est dans `packaging/spotify-client-id.txt` (pas secret, connexion PKCE) : il est intégré à l'appli. Chaque ami doit être ajouté dans le tableau de bord Spotify (User Management, 5 personnes maximum). Sans ça, ils passent par Deezer ou un CSV.
+**Spotify.** Sans compte ni clé : l'appli lit le lecteur intégrable de Spotify (`open.spotify.com/embed/…`) pour toute playlist publique ou album (jusqu'à 100 titres pour une playlist). Au-delà, pour une playlist privée ou les titres likés : export CSV avec Exportify, récupéré automatiquement dans Téléchargements.
 
 ## Sources de playlist
 

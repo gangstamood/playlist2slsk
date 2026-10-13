@@ -222,6 +222,70 @@ def _spotify_get(url: str, hdr: dict, **params) -> dict:
     return r.json()
 
 
+NOTICES: list[str] = []     # remarques à montrer dans l'interface après le chargement
+
+
+def _find_key(obj, key: str):
+    """Première valeur de `key` dans un JSON imbriqué (la structure des pages Spotify bouge)."""
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        obj = list(obj.values())
+    if isinstance(obj, list):
+        for v in obj:
+            r = _find_key(v, key)
+            if r is not None:
+                return r
+    return None
+
+
+def read_spotify_embed(kind: str, sid: str) -> tuple[list[Track], str]:
+    """Playlist ou album public, sans compte ni clé : on lit le lecteur intégrable de Spotify
+    (open.spotify.com/embed/…), qui contient la liste des titres."""
+    base = os.environ.get("P2S_SPOTIFY_EMBED", "https://open.spotify.com/embed")
+    try:
+        r = requests.get(f"{base}/{kind}/{sid}", headers=_BC_UA, timeout=20)
+    except requests.RequestException as e:
+        sys.exit(f"Impossible de joindre Spotify : {e}")
+    if r.status_code == 404:
+        sys.exit("Spotify ne trouve pas cette playlist : elle est peut-être privée. "
+                 "Rends-la publique, ou exporte-la avec Exportify (CSV).")
+    m = re.search(r'<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>', r.text, re.S)
+    try:
+        data = json.loads(m.group(1)) if m else {}
+    except ValueError:
+        data = {}
+    entity = _find_key(data, "entity") or {}
+    items = entity.get("trackList") or _find_key(data, "trackList") or []
+    if not items:
+        sys.exit("Impossible de lire cette playlist Spotify (privée ou vide ?). "
+                 "Exporte-la avec Exportify (CSV) : ça marche pour toutes les playlists.")
+    name = entity.get("name") or entity.get("title") or kind
+    album_cover = ""
+    if kind == "album":
+        srcs = (entity.get("coverArt") or {}).get("sources") or []
+        album_cover = max(srcs, key=lambda x: x.get("width") or 0).get("url", "") if srcs else ""
+    date = ((entity.get("releaseDate") or {}).get("isoString") or "")[:10]
+    artist_all = entity.get("subtitle") or ""
+    tracks = []
+    for i, it in enumerate(items, 1):
+        title = (it.get("title") or "").strip()
+        if not title or it.get("isPlayable") is False and not it.get("uri"):
+            continue
+        artists = (it.get("subtitle") or "").replace("\u00a0", " ")
+        tracks.append(Track(
+            title=title, artists=_split_artists(artists),
+            album=name if kind == "album" else "", album_artist=artist_all if kind == "album" else "",
+            duration_s=int((it.get("duration") or 0) / 1000), uri=it.get("uri") or "",
+            cover_url=album_cover, date=date if kind == "album" else "",
+            track_no=str(i) if kind == "album" else "",
+        ))
+    if kind == "playlist" and len(items) >= 100:
+        NOTICES.append(f"Spotify ne montre que les {len(items)} premiers titres d'une playlist sans connexion. "
+                       "Pour la playlist entière, exporte-la avec Exportify (CSV).")
+    return tracks, name
+
+
 def read_spotify_url(url: str, cid: str, secret: str, user_token: str = "") -> tuple[list[Track], str]:
     """Playlist, album ou titres likés. Avec user_token (connexion Spotify de l'interface),
     on lit comme Exportify ; sinon on tente le mode client (souvent refusé depuis 2026)."""
@@ -234,12 +298,11 @@ def read_spotify_url(url: str, cid: str, secret: str, user_token: str = "") -> t
     if user_token:
         hdr = {"Authorization": f"Bearer {user_token}"}
     elif liked:
-        sys.exit("Connecte-toi à Spotify dans l'interface pour lire tes titres likés.")
+        sys.exit("Tes titres likés sont privés : exporte-les avec Exportify (CSV).")
     elif cid and secret:
         hdr = {"Authorization": f"Bearer {_spotify_token(cid, secret)}"}
-    else:
-        sys.exit("Spotify : connecte-toi à Spotify dans l'interface (bouton Spotify), "
-                 "ou exporte la playlist en CSV sur https://exportify.app et passe le CSV.")
+    else:   # cas normal : playlist ou album public, sans compte
+        return read_spotify_embed(kind, sid)
     api = os.environ.get("P2S_SPOTIFY_API", "https://api.spotify.com/v1")
     tracks: list[Track] = []
     try:

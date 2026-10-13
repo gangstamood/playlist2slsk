@@ -343,7 +343,7 @@ body.has-player main { padding-bottom: 130px; }
       <div class="sources" role="group" aria-label="Source de la playlist">
         <button class="src" data-src="spotify" type="button" style="--brand:#1db954">
           <span class="src-ico" style="background:#1db954"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5c4-1.3 8.5-1 12 1M7 13c3.3-1 7-.7 9.8.8M8 16.3c2.6-.7 5.3-.5 7.5.6"/></svg></span>
-          <b>Spotify</b><small>Tes playlists</small>
+          <b>Spotify</b><small>Lien de playlist</small>
         </button>
         <button class="src" data-src="deezer" type="button" style="--brand:#a238ff">
           <span class="src-ico" style="background:#a238ff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17v-3M9.5 17v-6M14 17V8M18.5 17V5"/></svg></span>
@@ -608,7 +608,7 @@ body.has-player main { padding-bottom: 130px; }
       </div>
     </section>
 
-    <section class="card">
+    <section class="card hidden">
       <h3>Spotify</h3>
       <p class="sub">Pour charger tes playlists et tes titres likés directement, sans passer par Exportify.</p>
       <div id="sp-settings"></div>
@@ -875,9 +875,7 @@ $("#url").onkeydown = e => e.key === "Enter" && $("#url-go").click();
 // ---------- Choix de la source ----------
 const SOURCES = {
   spotify: { label: "Lien de la playlist Spotify", ph: "https://open.spotify.com/playlist/…", csv: true,
-    hint: () => info.spotify?.connected
-      ? "Une de tes playlists, ou un album. Pour la playlist de quelqu'un d'autre, copie-la d'abord dans une des tiennes."
-      : "Connecte-toi à Spotify ci-dessus pour coller un lien, ou dépose un CSV exporté ci-dessous." },
+    hint: () => "N'importe quelle playlist publique ou un album, sans compte : sur Spotify, ⋯ › Partager › Copier le lien. Jusqu'à 100 titres ; pour une playlist plus longue, privée ou tes titres likés, passe par Exportify ci-dessous." },
   deezer: { label: "Lien de la playlist Deezer", ph: "https://www.deezer.com/fr/playlist/…",
     hint: () => "Une playlist ou un album. La playlist doit être publique (sur Deezer : ⋯ › Rendre publique). Pas besoin de compte." },
   youtube: { label: "Lien YouTube", ph: "https://www.youtube.com/playlist?list=…",
@@ -898,13 +896,12 @@ function pickSource(name) {
   $("#src-link").classList.toggle("hidden", !link);
   $("#src-csv").classList.toggle("hidden", link && !cfg.csv);
   $("#csv-or").classList.toggle("hidden", !link);
-  $("#sp-box").classList.toggle("hidden", name !== "spotify");
-  if (name === "spotify") renderSpotify();
+  $("#sp-box").classList.add("hidden");
   if (link) {
     $("#url-label").textContent = cfg.label;
     $("#url").placeholder = cfg.ph;
     $("#src-hint").textContent = cfg.hint();
-    if (name !== "spotify" || info.spotify?.connected) setTimeout(() => $("#url").focus(), 0);
+    setTimeout(() => $("#url").focus(), 0);
   }
 }
 $$(".src").forEach(b => b.onclick = () => pickSource(b.dataset.src));
@@ -922,6 +919,7 @@ loadSec.addEventListener("drop", e => { e.preventDefault(); loadSec.classList.re
 
 function loaded(r) {
   if (r.error) return toast(r.error);
+  if (r.notice) toast(r.notice);
   if (player.cur !== null && r.load_id !== loadId) closePlayer();
   tracks = r.tracks; plName = r.name; cur = r; loadId = r.load_id;
   renderFollowBtn();

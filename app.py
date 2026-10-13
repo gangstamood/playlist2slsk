@@ -356,6 +356,7 @@ def load_source(body: dict) -> dict:
         if path.suffix.lower() != ".csv" or not path.is_file():
             return {"error": "Ce fichier n'est plus dans Téléchargements."}
         body = {"filename": path.stem.replace("_", " ") + ".csv", "text": path.read_bytes().decode("utf-8-sig", "replace")}
+    p2s.NOTICES.clear()
     if body.get("url"):
         url = body["url"].strip()
         cid = body.get("spotify_id") or settings["spotify_id"] or os.environ.get("SPOTIFY_CLIENT_ID", "")
@@ -409,7 +410,10 @@ def _finish_load(tracks: list, name: str, source: str) -> dict:
             S.status[pos] = "skip"
             S.details[pos] = {"path": str(path)}
     record_history(source, name, tracks, have=len(present))
-    return current()
+    out = current()
+    if p2s.NOTICES:
+        out["notice"] = " ".join(p2s.NOTICES)
+    return out
 
 
 def scan_present(tracks: list, folder: str) -> dict:
