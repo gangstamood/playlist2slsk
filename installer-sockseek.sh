@@ -8,8 +8,9 @@ case "$(uname -m)" in
   *)     ARCH=osx-x64 ;;
 esac
 
-echo "Recherche de la dernière version de sockseek ($ARCH)…"
-URL=$(curl -fsSL https://api.github.com/repos/fiso64/sockseek/releases/latest \
+TAG="${SOCKSEEK_TAG:-v3.0.5}"   # version figée, vérifiée avec l'appli
+echo "Recherche de sockseek $TAG ($ARCH)…"
+URL=$(curl -fsSL https://api.github.com/repos/fiso64/sockseek/releases/tags/$TAG \
       | grep -o "https://[^\"]*_${ARCH}\.tar\.gz" | head -1)
 if [ -z "$URL" ]; then
   echo "Impossible de trouver le fichier à télécharger. Vérifie ta connexion."

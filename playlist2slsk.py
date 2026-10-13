@@ -46,6 +46,9 @@ UA = {"User-Agent": "playlist2slsk/1.0"}
 # --------------------------------------------------------------------------- #
 # Modèle
 # --------------------------------------------------------------------------- #
+_CTRL = re.compile(r"[\x00-\x1f\x7f]")
+
+
 @dataclass
 class Track:
     title: str
@@ -60,6 +63,15 @@ class Track:
     track_no: str = ""
     position: int = 0        # position dans la playlist (1-indexée)
     final_path: Path | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        # Données venues d'Internet ou d'un CSV : pas de retour à la ligne ni de caractère de contrôle,
+        # sinon un titre piégé pourrait imiter une ligne « @@P2S » lue par l'appli.
+        clean = lambda v: _CTRL.sub(" ", v).strip() if isinstance(v, str) else v
+        self.title = clean(self.title)
+        self.artists = [clean(a) for a in self.artists]
+        for k in ("album", "album_artist", "uri", "cover_url", "thumb", "date", "track_no"):
+            setattr(self, k, clean(getattr(self, k)))
 
     @property
     def artist(self) -> str:

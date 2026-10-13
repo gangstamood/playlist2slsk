@@ -190,6 +190,8 @@ def save_account(body: dict) -> dict:
     updates["listen-port"] = port
     if not updates["username"]:
         return {"error": "Indique ton identifiant Soulseek."}
+    if any(c in v for v in updates.values() for c in "\r\n"):
+        return {"error": "Retour à la ligne interdit dans l'identifiant ou le mot de passe."}
     if body.get("verify"):
         if S.running:
             return {"error": "Attends la fin du téléchargement pour tester le compte."}
@@ -333,7 +335,7 @@ S = State()
 def track_dict(t: p2s.Track) -> dict:
     return {"n": t.position, "artist": t.artist, "title": t.title, "album": t.album,
             "duration": t.duration_s, "cover": p2s._upgrade_scdn(t.cover_url) if t.cover_url else t.thumb,
-            "bandcamp": t.uri if "bandcamp.com/" in t.uri else ""}
+            "bandcamp": t.uri if re.match(r"https://[\w.-]+/", t.uri) and "bandcamp.com/" in t.uri else ""}
 
 
 def load_source(body: dict) -> dict:
@@ -1086,7 +1088,7 @@ def reveal(path: str) -> dict:
 
 def open_path(path: str) -> dict:
     p = Path(path).expanduser()
-    if not p.exists():
+    if not p.is_dir():   # seulement des dossiers : jamais lancer un programme ou un fichier
         return {"error": "Ce dossier n'existe pas encore."}
     if WIN:
         os.startfile(str(p))  # type: ignore[attr-defined]

@@ -1350,7 +1350,7 @@ $("#exportify-stop").onclick = stopExportWatch;
 
 // ---------- Bandcamp : recherche du morceau pour l'acheter ----------
 function bandcampUrl(t) {
-  if (t.bandcamp) return t.bandcamp;   // playlist venue de Bandcamp : lien direct vers le morceau
+  if (/^https:\/\//.test(t.bandcamp || "")) return t.bandcamp;   // playlist venue de Bandcamp : lien direct vers le morceau
   const artist = (t.artist || "").split(/,\s*/)[0];
   const title = (t.title || "").replace(/\s*[\(\[][^\)\]]*\boriginal\s+(mix|version)\b[^\)\]]*[\)\]]/ig, "").replace(/\s+[-–]\s+original\s+(mix|version)\s*$/i, "").trim();
   return "https://bandcamp.com/search?item_type=t&q=" + encodeURIComponent(`${artist} ${title}`.trim());

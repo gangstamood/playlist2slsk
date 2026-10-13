@@ -12,7 +12,9 @@ rm -rf build/sockseek && mkdir -p build/sockseek build/dl
 python - "$TARGET" <<'PY'
 import json, os, sys, urllib.request
 target = sys.argv[1]
-req = urllib.request.Request("https://api.github.com/repos/fiso64/sockseek/releases/latest",
+# Version figée : une nouvelle version de sockseek n'entre dans l'appli que si on change ce numéro.
+tag = os.environ.get("SOCKSEEK_TAG", "v3.0.5")
+req = urllib.request.Request("https://api.github.com/repos/fiso64/sockseek/releases/tags/" + tag,
                              headers={"Accept": "application/vnd.github+json",
                                       **({"Authorization": "Bearer " + os.environ["GH_TOKEN"]} if os.environ.get("GH_TOKEN") else {})})
 rel = json.load(urllib.request.urlopen(req))
@@ -23,6 +25,8 @@ if not cands:
 a = cands[0]
 print("téléchargement", a["name"])
 urllib.request.urlretrieve(a["browser_download_url"], "build/dl/" + a["name"])
+import hashlib
+print("sha256", hashlib.sha256(open("build/dl/" + a["name"], "rb").read()).hexdigest())
 open("build/dl/NAME", "w").write(a["name"])
 PY
 NAME=$(cat build/dl/NAME)

@@ -215,7 +215,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             return
         }
         if url.scheme != "http" && url.scheme != "https" && url.scheme != "about" && url.scheme != "data" && url.scheme != "blob" {
-            NSWorkspace.shared.open(url)
+            // Jamais de file:// ni d'autre schéma qui lancerait un programme : seulement mail et Spotify.
+            if url.scheme == "mailto" || url.scheme == "spotify" { NSWorkspace.shared.open(url) }
             return decisionHandler(.cancel)
         }
         // Un lien cliqué depuis l'interface vers un site extérieur : navigateur.
@@ -230,7 +231,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = action.request.url {
-            if isLocal(url) { webView.load(action.request) } else { NSWorkspace.shared.open(url) }
+            if isLocal(url) { webView.load(action.request) }
+            else if url.scheme == "http" || url.scheme == "https" { NSWorkspace.shared.open(url) }
         }
         return nil
     }
