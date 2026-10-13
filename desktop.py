@@ -35,8 +35,18 @@ def _std_streams() -> None:
         setattr(sys, name, stream or open(os.devnull, "w"))
 
 
+def _utf8_streams() -> None:
+    """L'appli lit la sortie du script en UTF-8 (Windows écrirait en cp1252 sinon)."""
+    for s in (sys.stdout, sys.stderr):
+        try:
+            s.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+        except (AttributeError, ValueError):
+            pass
+
+
 def run_script() -> None:
     _std_streams()
+    _utf8_streams()
     sys.argv = [sys.argv[0], *sys.argv[2:]]
     sys.path.insert(0, str(BASE))
     import playlist2slsk
