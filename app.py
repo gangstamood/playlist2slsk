@@ -62,6 +62,7 @@ DEFAULTS = {
     "check_lossless": True,         # repérer les MP3 réencodés en FLAC
     "export_traktor": False,        # <playlist>.nml à importer dans Traktor
     "export_rekordbox": False,      # playlist ajoutée à <dossier racine>/rekordbox.xml
+    "rekordbox_ready": False,       # le mode d'emploi Rekordbox a déjà été montré une fois
     "pattern": "{artist} - {title}",
     "match": "normal",              # normal | strict | wide
     "fast_search": False,
@@ -525,15 +526,67 @@ def update_history(source: str, **fields) -> None:
     save_history(items)
 
 
+def _rekordbox_app() -> Path | None:
+    if sys.platform == "darwin":
+        for root in (Path("/Applications"), Path.home() / "Applications"):
+            apps = sorted(root.glob("rekordbox*/rekordbox*.app")) + sorted(root.glob("rekordbox*.app"))
+            if apps:
+                return apps[-1]                 # la version la plus récente
+    elif WIN:
+        for root in (os.environ.get("ProgramFiles", r"C:\Program Files"),):
+            exes = sorted(Path(root).glob("Pioneer/rekordbox*/rekordbox.exe")) + sorted(Path(root).glob("AlphaTheta/rekordbox*/rekordbox.exe"))
+            if exes:
+                return exes[-1]
+    return None
+
+
+def send_rekordbox(body: dict) -> dict:
+    """Ajoute la playlist chargée au rekordbox.xml (fichiers déjà téléchargés) et ouvre Rekordbox."""
+    with S.lock:
+        if S.running:
+            return {"error": "Attends la fin du téléchargement en cours."}
+        tracks = []
+        for t in S.tracks:
+            p = Path((S.details.get(t.position) or {}).get("path") or "")
+            if p.is_file():
+                t.final_path = p
+                tracks.append(t)
+        name = p2s.safe_name(S.folder or S.name or "playlist")
+    if not tracks:
+        return {"error": "Aucun morceau de cette playlist n'est encore téléchargé."}
+    settings = load_settings()
+    xml = Path(settings["out"] or DEFAULTS["out"]).expanduser() / "rekordbox.xml"
+    p2s.update_rekordbox_xml(xml, name, tracks)
+    first = not settings.get("rekordbox_ready")
+    if first:
+        settings["rekordbox_ready"] = True
+        save_settings(settings)
+    app = _rekordbox_app()
+    if app and not body.get("no_open"):
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", "-a", str(app)])
+        else:
+            subprocess.Popen([str(app)], **NOWIN)
+    return {"ok": True, "count": len(tracks), "name": name, "xml": str(xml), "xml_display": _tilde(xml),
+            "opened": bool(app), "first": first}
+
+
 def history() -> dict:
-    follows = {f["source"] for f in load_follows()}
+    """Toutes les playlists connues (déjà chargées ou suivies), pour la mosaïque de l'onglet Playlists."""
+    follows = {f["source"]: f for f in load_follows()}
     dirs = load_dirs()
     items = load_history()
+    known = {h["source"] for h in items}
+    items += [{**f, "opened": f.get("added", 0)} for src, f in follows.items() if src not in known]
     for h in items:
+        f = follows.get(h["source"])
         h["followable"] = followable(h["source"])
-        h["followed"] = h["source"] in follows
+        h["followed"] = bool(f)
+        if f:
+            h.update({k: f.get(k) for k in ("synced", "new", "missing", "error")})
+            h["cover"] = h.get("cover") or f.get("cover", "")
         h["dir"] = dirs.get(h["source"], "")
-    return {"history": items}
+    return {"history": items, "sync": {k: SYNC[k] for k in ("active", "index", "total", "current", "added")}}
 
 
 def forget_history(body: dict) -> dict:
@@ -948,7 +1001,11 @@ def sync_follows(body: dict) -> dict:
             return {"error": "Attends la fin du téléchargement en cours."}
         items = load_follows()
         if body.get("source"):
-            items = [f for f in items if f["source"] == body["source"]]
+            src = body["source"]
+            items = [f for f in items if f["source"] == src]
+            if not items and followable(src):    # playlist déjà chargée mais pas suivie : on la rescanne quand même
+                h = find_history(src) or {}
+                items = [{"source": src, "name": h.get("folder") or h.get("name") or "playlist"}]
         if not items:
             return {"error": "Aucune playlist suivie."}
         SYNC.update(active=True, index=0, total=len(items), current="", cancel=False, added=0)
@@ -1306,6 +1363,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/replace": lambda: replace_tracks(body),
             "/api/account": lambda: save_account(body),
             "/api/dir": lambda: set_dir(body),
+            "/api/rekordbox": lambda: send_rekordbox(body),
             "/api/pick-folder": pick_folder,
             "/api/open": lambda: open_path(body.get("path", "")),
             "/api/reveal": lambda: reveal(body.get("path", "")),

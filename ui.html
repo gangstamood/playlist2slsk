@@ -221,7 +221,29 @@ div.cov::after { content: "♪"; display: grid; place-items: center; height: 100
 .step-load-drag { outline: 3px dashed var(--accent); outline-offset: 8px; }
 @media (max-width: 700px) { .sources { grid-template-columns: repeat(2, minmax(0, 1fr)); } .load-title { font-size: 34px; } }
 
-#history { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px 18px; margin-top: 6px; }
+#library { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 26px 18px; margin-top: 10px; }
+.sl { all: unset; cursor: pointer; display: block; min-width: 0; align-self: start; }
+.sl .cv { position: relative; aspect-ratio: 1; background: var(--soft); display: grid; place-items: center; color: var(--muted); font-size: 34px; transition: transform .15s, box-shadow .15s; }
+.sl .cv img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sl:hover .cv, .sl:focus-visible .cv { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 var(--accent); }
+.sl .bd { position: absolute; left: 6px; top: 6px; display: flex; gap: 4px; flex-wrap: wrap; z-index: 1; }
+.sl .bd span { background: var(--text); color: var(--bg); font: 500 10.5px var(--mono); text-transform: uppercase; padding: 2px 5px; }
+.sl .bd .new { background: var(--accent); color: var(--accent-ink); }
+.sl .bd .err { background: var(--err); color: #fff; }
+.sl b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 10px; font-weight: 800; font-size: 16px; letter-spacing: -0.02em; line-height: 1.15; }
+.sl p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+.sl.busy .cv { outline: 3px solid var(--accent); outline-offset: 3px; }
+.sl.busy b::after { content: " · mise à jour…"; color: var(--accent); font-weight: 500; font-size: 13px; letter-spacing: 0; }
+.lib-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+.plm-box { max-width: 560px; }
+.plm-top { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 18px; align-items: end; }
+.plm-cov { width: 120px; height: 120px; background: var(--soft) center / cover; }
+.plm-box h2 { font-size: 32px; overflow-wrap: anywhere; }
+.plm-box #plm-meta { margin-top: 6px; }
+.plm-links { gap: 4px; }
+.plm-box .acts .btn { flex: 1; padding: 14px; }
+.rb-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; }
+.rb-steps code { font: 12px var(--mono); overflow-wrap: anywhere; }
 .hist-tag { font: 500 11px var(--mono); text-transform: uppercase; color: var(--accent); padding: 0 6px; }
 .pl-head #pl-listen { padding: 11px 14px; }
 
@@ -404,6 +426,7 @@ body.has-player main { padding-bottom: 130px; }
         <div id="mosaic" class="mosaic"></div>
         <div class="grow"><h2 id="pl-name"></h2><p id="pl-meta"></p></div>
         <button id="pl-listen" class="primary hidden" type="button">▶ Écouter</button>
+        <button id="to-rb" class="follow-btn hidden" type="button" title="Ajouter cette playlist à Rekordbox (morceaux déjà téléchargés)">→ Rekordbox</button>
         <button id="follow" class="follow-btn hidden" title="Retrouver cette playlist dans l'onglet Playlists et la mettre à jour en un clic">+ Suivre</button>
         <button id="change" class="link">Changer</button>
       </div>
@@ -472,20 +495,15 @@ body.has-player main { padding-bottom: 130px; }
   <div id="view-follows" class="hidden">
     <section class="card">
       <div class="list-head">
-        <div><h3>Playlists suivies</h3>
-        <p class="sub">Une mise à jour ne télécharge que les morceaux ajoutés depuis la dernière fois.</p></div>
-        <button id="sync-all" class="primary">Tout mettre à jour</button>
+        <div><h3>Mes playlists</h3>
+        <p class="sub">Toutes les playlists déjà scannées. Clique sur une pochette pour chercher les nouveaux ajouts.</p></div>
+        <button id="sync-all" class="primary">Mettre à jour les suivies</button>
       </div>
-      <div id="follows"></div>
-      <label class="check" style="margin-top:16px"><input type="checkbox" data-key="sync_on_launch"> Mettre à jour automatiquement à l'ouverture de l'appli</label>
-    </section>
-    <section class="card">
-      <div class="list-head">
-        <div><h3>Historique</h3>
-        <p class="sub">Toutes les playlists déjà chargées. Un clic les rouvre avec ce qui est déjà téléchargé, prêt à écouter.</p></div>
-        <button id="hist-clear" class="link" type="button">Vider l'historique</button>
+      <div id="library"></div>
+      <div class="lib-foot">
+        <label class="check"><input type="checkbox" data-key="sync_on_launch"> Mettre à jour les playlists suivies à l'ouverture de l'appli</label>
+        <button id="hist-clear" class="link" type="button">Tout retirer</button>
       </div>
-      <div id="history"></div>
     </section>
   </div>
 
@@ -624,6 +642,29 @@ body.has-player main { padding-bottom: 130px; }
   </div>
   <footer class="credit">Powered by <b>Lutin</b></footer>
 </main>
+<div id="plm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="plm-title">
+  <div class="modal-box plm-box">
+    <div class="plm-top"><div id="plm-cov" class="plm-cov"></div>
+      <div style="min-width:0"><span class="kicker" id="plm-kind"></span><h2 id="plm-title"></h2><p id="plm-meta"></p></div></div>
+    <p id="plm-text"></p>
+    <div class="acts"><button id="plm-scan" class="primary" type="button">Chercher les nouveaux ajouts</button><button id="plm-open" class="btn" type="button">Ouvrir</button></div>
+    <div class="acts plm-links"><button id="plm-follow" class="link" type="button"></button><button id="plm-dir" class="link" type="button">Dossier</button><button id="plm-rm" class="link" type="button">Retirer</button><button id="plm-close" class="link" type="button" style="margin-left:auto">Fermer</button></div>
+  </div>
+</div>
+<div id="rbm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rbm-title">
+  <div class="modal-box">
+    <span class="kicker">Rekordbox</span>
+    <h2 id="rbm-title">Playlist envoyée</h2>
+    <p id="rbm-text"></p>
+    <ol class="rb-steps">
+      <li>Dans Rekordbox : <b>Préférences › Avancé › Base de données</b>, à la ligne « rekordbox xml », clique sur <b>Parcourir</b> et choisis <code id="rbm-xml"></code>.</li>
+      <li><b>Préférences › Affichage › Arborescence</b> : coche <b>rekordbox xml</b>.</li>
+      <li>Dans la colonne de gauche, ouvre <b>rekordbox xml › playlist2slsk</b>. Clic droit sur ta playlist › <b>Importer la playlist</b>.</li>
+    </ol>
+    <p class="hint" style="margin:0">Les étapes 1 et 2 ne se font qu'une fois. Ensuite, après chaque envoi, clique sur l'icône ↻ à côté de « rekordbox xml » pour voir les nouveautés.</p>
+    <div class="acts"><button id="rbm-ok" class="primary" type="button">Compris</button><button id="rbm-show" class="link" type="button">Afficher le fichier</button></div>
+  </div>
+</div>
 <div id="login" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
   <form class="modal-box" id="login-form" autocomplete="off">
     <div class="kicker">Première étape</div>
@@ -696,7 +737,7 @@ function tab(name) {
   $("#view-dl").classList.toggle("hidden", name !== "dl");
   $("#view-settings").classList.toggle("hidden", name !== "settings");
   $("#view-follows").classList.toggle("hidden", name !== "follows");
-  if (name === "follows") { renderFollows(); renderHistory(); }
+  if (name === "follows") renderLibrary();
   window.scrollTo(0, 0);
 }
 $$(".tabs button").forEach(b => b.onclick = () => tab(b.dataset.tab));
@@ -930,6 +971,7 @@ function loaded(r) {
   details = r.details || {};
   renderList(r.status || {});
   $("#pl-listen").classList.toggle("hidden", !playQueue().length);
+  $("#to-rb").classList.toggle("hidden", !playQueue().length);
   updateMeta(); updateDest();
   $("#options").classList.remove("hidden");
   show("#step-list");
@@ -976,7 +1018,7 @@ async function setDir(source, path) {
     renderList(r.current.status || {}); updateMeta(); updateDest();
   }
   toast(path ? `Cette playlist ira dans ${path}` : "Cette playlist revient dans le dossier commun.");
-  if (!$("#view-follows").classList.contains("hidden")) { renderFollows(); renderHistory(); }
+  if (!$("#view-follows").classList.contains("hidden")) renderLibrary();
 }
 $("#limit").oninput = () => { updateMeta(); renderList({}); };
 $("#name").oninput = () => { updateMeta(); updateDest(); };
@@ -1024,76 +1066,105 @@ async function openHistory(src, btn) {
   tab("dl"); $("#step-run").classList.add("hidden"); $("#change").classList.remove("hidden");
   loaded(r);
 }
-async function renderHistory() {
-  const r = await api("/api/history"), box = $("#history");
+// ---------- Envoyer vers Rekordbox ----------
+let rbXml = "";
+$("#to-rb").onclick = async () => {
+  const b = $("#to-rb"); b.disabled = true;
+  const r = await api("/api/rekordbox", {});
+  b.disabled = false;
+  if (r.error) return toast(r.error);
+  rbXml = r.xml;
+  const what = `${r.count} morceau${r.count > 1 ? "x" : ""} ajouté${r.count > 1 ? "s" : ""} à la playlist « ${r.name} » du rekordbox.xml.`;
+  if (!r.first) return toast(what + (r.opened ? " Rekordbox s'ouvre : clique sur ↻ à côté de « rekordbox xml »." : " Dans Rekordbox, clique sur ↻ à côté de « rekordbox xml »."));
+  $("#rbm-text").textContent = what + (r.opened ? " Rekordbox s'ouvre. " : " ") + "Pour la voir la première fois :";
+  $("#rbm-xml").textContent = r.xml_display;
+  $("#rbm").classList.remove("hidden");
+};
+$("#rbm-ok").onclick = () => $("#rbm").classList.add("hidden");
+$("#rbm-show").onclick = () => api("/api/reveal", { path: rbXml });
+$("#rbm").onclick = e => { if (e.target.id === "rbm") $("#rbm").classList.add("hidden"); };
+
+// ---------- Mes playlists : mosaïque de pochettes ----------
+let libItems = [], libSync = {};
+async function renderLibrary() {
+  const r = await api("/api/history"), box = $("#library");
+  libItems = r.history; libSync = r.sync || {};
   box.innerHTML = "";
-  $("#hist-clear").classList.toggle("hidden", !r.history.length);
-  if (!r.history.length) { box.append(el("p", { class: "empty" }, "Rien pour l'instant : les playlists que tu charges apparaîtront ici.")); return; }
-  r.history.forEach(h => {
-    const parts = [KIND_ALL[h.kind] || "Lien", `${h.count} morceau${h.count > 1 ? "x" : ""}`];
-    if (h.have) parts.push(`${h.have} téléchargé${h.have > 1 ? "s" : ""}`);
-    parts.push(since_(h.downloaded || h.opened));
-    const meta = el("p", {}, parts.join(" · "));
-    if (h.dir) meta.append(el("br"), `Dossier : ${h.dir}`);
-    const open = el("button", { class: "btn", type: "button" }, "Ouvrir");
-    open.onclick = () => openHistory(h.source, open);
-    const acts = el("div", { class: "acts" }, open);
-    if (h.followable && !h.followed) {
-      const f = el("button", { class: "link", type: "button" }, "+ Suivre");
-      f.onclick = async () => { const res = await api("/api/follow", { source: h.source, name: h.folder || h.name }); if (res.error) return toast(res.error); renderFollows(); renderHistory(); };
-      acts.append(f);
-    } else if (h.followed) acts.append(el("span", { class: "hist-tag" }, "Suivie"));
-    const dirBtn = el("button", { class: "link", type: "button", title: "Ranger cette playlist dans un dossier à elle" }, "Dossier");
-    dirBtn.onclick = () => chooseDir(h.source);
-    acts.append(dirBtn);
-    const rm = el("button", { class: "link", type: "button", title: "Retirer de l'historique (les fichiers restent)" }, "Retirer");
-    rm.onclick = async () => { await api("/api/forget", { source: h.source }); renderHistory(); };
-    acts.append(rm);
-    const cov = h.cover ? el("img", { class: "cov", src: h.cover, alt: "" }) : el("div", { class: "cov" });
-    box.append(el("div", { class: "fl" }, cov, el("div", { style: "min-width:0" }, el("b", {}, h.folder || h.name), meta), acts));
+  const busy = libSync.active || running, nFollow = libItems.filter(h => h.followed).length;
+  $("#sync-all").disabled = busy || !nFollow;
+  $("#sync-all").classList.toggle("hidden", !nFollow);
+  $("#sync-all").textContent = libSync.active ? `Mise à jour ${libSync.index} / ${libSync.total}…` : "Mettre à jour les suivies";
+  $("#hist-clear").classList.toggle("hidden", !libItems.length);
+  if (!libItems.length) { box.append(el("p", { class: "empty" }, "Rien pour l'instant : chaque playlist que tu charges apparaîtra ici.")); return; }
+  libItems.forEach(h => {
+    const cv = el("div", { class: "cv" }, "♪");
+    if (h.cover) cv.append(el("img", { src: h.cover, alt: "", loading: "lazy" }));
+    const bd = el("div", { class: "bd" });
+    if (h.followed) bd.append(el("span", {}, "Suivie"));
+    if (h.error) bd.append(el("span", { class: "err", title: h.error }, "Erreur"));
+    else if (h.new) bd.append(el("span", { class: "new" }, `+${h.new}`));
+    cv.append(bd);
+    const parts = [KIND_ALL[h.kind] || "Lien", `${h.count || 0} morceau${h.count > 1 ? "x" : ""}`];
+    if (h.have) parts.push(`${h.have} chez toi`);
+    const name = h.folder || h.name;
+    const b = el("button", { class: "sl" + (libSync.active && libSync.current === name ? " busy" : ""), type: "button", title: name },
+      cv, el("b", {}, name), el("p", {}, parts.join(" · ")), el("p", {}, since_(h.synced || h.downloaded || h.opened)));
+    b.onclick = () => openPl(h);
+    box.append(b);
   });
 }
+let plmCur = null;
+function openPl(h) {
+  plmCur = h;
+  const name = h.folder || h.name;
+  $("#plm-cov").style.backgroundImage = h.cover ? `url("${h.cover.replace(/"/g, "%22")}")` : "";
+  $("#plm-kind").textContent = KIND_ALL[h.kind] || "Lien";
+  $("#plm-title").textContent = name;
+  const meta = [`${h.count || 0} morceau${h.count > 1 ? "x" : ""}`];
+  if (h.have) meta.push(`${h.have} déjà chez toi`);
+  if (h.synced) meta.push(ago(h.synced));
+  $("#plm-meta").textContent = meta.join(" · ") + (h.dir ? `\nDossier : ${h.dir}` : "");
+  $("#plm-meta").style.whiteSpace = "pre-line";
+  $("#plm-text").textContent = h.followable
+    ? "On relit la playlist et on télécharge seulement les morceaux ajoutés depuis la dernière fois. Ce qui est déjà dans le dossier n'est pas retéléchargé."
+    : "Un CSV ne change pas tout seul : pour récupérer de nouveaux morceaux, exporte la playlist à nouveau. Tu peux l'ouvrir pour relancer ce qui manque.";
+  $("#plm-scan").classList.toggle("hidden", !h.followable);
+  $("#plm-open").className = h.followable ? "btn" : "primary";
+  $("#plm-open").textContent = h.followable ? "Ouvrir sans télécharger" : "Ouvrir la playlist";
+  $("#plm-follow").classList.toggle("hidden", !h.followable);
+  $("#plm-follow").textContent = h.followed ? "Ne plus suivre" : "+ Suivre";
+  $("#plm-scan").disabled = $("#plm-open").disabled = !!(running || libSync.active);
+  $("#plm").classList.remove("hidden");
+}
+const closePl = () => { $("#plm").classList.add("hidden"); plmCur = null; };
+$("#plm-close").onclick = closePl;
+$("#plm").onclick = e => { if (e.target.id === "plm") closePl(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && plmCur) closePl(); });
+$("#plm-scan").onclick = () => { const src = plmCur.source; closePl(); sync(src); };
+$("#plm-open").onclick = () => { const src = plmCur.source; closePl(); openHistory(src); };
+$("#plm-dir").onclick = async () => { const src = plmCur.source; closePl(); await chooseDir(src); renderLibrary(); };
+$("#plm-follow").onclick = async () => {
+  const h = plmCur;
+  const r = await api("/api/follow", { source: h.source, follow: !h.followed, name: h.folder || h.name });
+  if (r.error) return toast(r.error);
+  if (cur && cur.source === h.source) { cur.followed = !h.followed; renderFollowBtn(); }
+  closePl(); renderLibrary();
+};
+$("#plm-rm").onclick = async () => {
+  const h = plmCur;
+  if (!confirm(`Retirer « ${h.folder || h.name} » de tes playlists ? Les fichiers téléchargés restent en place.`)) return;
+  if (h.followed) await api("/api/follow", { source: h.source, follow: false });
+  await api("/api/forget", { source: h.source });
+  if (cur && cur.source === h.source) { cur.followed = false; renderFollowBtn(); }
+  closePl(); renderLibrary();
+};
 $("#hist-clear").onclick = async () => {
-  if (!confirm("Vider tout l'historique ? Les fichiers téléchargés ne sont pas touchés.")) return;
-  await api("/api/forget", {}); renderHistory();
+  if (!confirm("Retirer toutes les playlists de la liste (y compris les suivies) ? Les fichiers téléchargés ne sont pas touchés.")) return;
+  for (const h of libItems.filter(h => h.followed)) await api("/api/follow", { source: h.source, follow: false });
+  await api("/api/forget", {}); renderLibrary();
 };
 $("#pl-listen").onclick = () => { const q = playQueue(); if (q.length) playFrom(q[0]); };
 
-async function renderFollows() {
-  const r = await api("/api/follows"), box = $("#follows");
-  box.innerHTML = "";
-  const busy = r.sync.active || running;
-  $("#sync-all").disabled = busy || !r.follows.length;
-  $("#sync-all").textContent = r.sync.active ? `Mise à jour ${r.sync.index} / ${r.sync.total}…` : "Tout mettre à jour";
-  if (!r.follows.length) {
-    box.append(el("p", { class: "empty" }, "Aucune playlist suivie pour l'instant. Charge un lien Spotify, Deezer, YouTube ou SoundCloud, puis clique sur « + Suivre »."));
-    return;
-  }
-  r.follows.forEach(f => {
-    const meta = el("p", {}, `${KIND[f.kind] || "Lien"} · ${f.count ? f.count + " morceaux · " : ""}${ago(f.synced)}`);
-    if (f.error) meta.append(" · ", el("span", { class: "err", title: f.error }, "erreur"));
-    else if (f.synced) {
-      if (f.new) meta.append(" · ", el("span", { class: "new" }, `+${f.new} nouveau${f.new > 1 ? "x" : ""}`));
-      if (f.missing) meta.append(` · ${f.missing} introuvable${f.missing > 1 ? "s" : ""}`);
-    }
-    const up = el("button", { class: "btn" }, "Mettre à jour");
-    up.disabled = busy;
-    up.onclick = () => sync(f.source);
-    if (f.dir) meta.append(el("br"), `Dossier : ${f.dir}`);
-    const dirBtn = el("button", { class: "link", title: f.dir ? "Changer le dossier de cette playlist" : "Ranger cette playlist dans un dossier à elle" }, "Dossier");
-    dirBtn.onclick = () => chooseDir(f.source);
-    const rm = el("button", { class: "link", title: "Ne plus suivre" }, "Retirer");
-    rm.onclick = async () => {
-      if (!confirm(`Ne plus suivre « ${f.name} » ? Les fichiers déjà téléchargés restent en place.`)) return;
-      await api("/api/follow", { source: f.source, follow: false });
-      if (cur.source === f.source) { cur.followed = false; renderFollowBtn(); }
-      renderFollows();
-    };
-    const cov = f.cover ? el("img", { class: "cov", src: f.cover, alt: "" }) : el("div", { class: "cov" });
-    box.append(el("div", { class: "fl" + (r.sync.active && r.sync.current === f.name ? " busy" : "") },
-      cov, el("div", { style: "min-width:0" }, el("b", {}, f.name), meta), el("div", { class: "acts" }, up, dirBtn, rm)));
-  });
-}
 async function sync(source) {
   clearTimeout(saveTimer);
   const r = await api("/api/sync", source ? { source } : {});
@@ -1293,6 +1364,7 @@ function finish(s) {
   $("#open").dataset.path = s.dest;
   $("#listen").classList.toggle("hidden", !playQueue().length);
   $("#pl-listen").classList.toggle("hidden", !playQueue().length);
+  $("#to-rb").classList.toggle("hidden", !playQueue().length);
   $("#retry").classList.toggle("hidden", !(miss || c.stopped));
   $("#retry").textContent = settings.match === "wide" ? "Réessayer les manquants" : "Réessayer en recherche élargie";
 }
