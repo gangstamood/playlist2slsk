@@ -11,6 +11,11 @@ on:
 permissions:
   contents: write
 
+# Un nouvel envoi annule la construction précédente encore en cours.
+concurrency:
+  group: installateurs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   mac:
     strategy:
