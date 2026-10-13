@@ -239,6 +239,26 @@ def _find_key(obj, key: str):
     return None
 
 
+def _fill_spotify_covers(tracks: list[Track]) -> None:
+    """Pochette de chaque titre via l'oEmbed public de Spotify (requêtes en parallèle)."""
+    todo = [t for t in tracks if not t.cover_url and t.spotify_id]
+    if not todo:
+        return
+    api = os.environ.get("P2S_SPOTIFY_OEMBED", "https://open.spotify.com/oembed")
+
+    def one(t: Track) -> None:
+        try:
+            r = requests.get(api, params={"url": f"https://open.spotify.com/track/{t.spotify_id}"},
+                             headers=UA, timeout=8)
+            if r.ok:
+                t.cover_url = r.json().get("thumbnail_url") or ""
+        except (requests.RequestException, ValueError):
+            pass
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(8) as ex:
+        list(ex.map(one, todo))
+
+
 def read_spotify_embed(kind: str, sid: str) -> tuple[list[Track], str]:
     """Playlist ou album public, sans compte ni clé : on lit le lecteur intégrable de Spotify
     (open.spotify.com/embed/…), qui contient la liste des titres."""
@@ -280,6 +300,7 @@ def read_spotify_embed(kind: str, sid: str) -> tuple[list[Track], str]:
             cover_url=album_cover, date=date if kind == "album" else "",
             track_no=str(i) if kind == "album" else "",
         ))
+    _fill_spotify_covers(tracks)
     if kind == "playlist" and len(items) >= 100:
         NOTICES.append(f"Spotify ne montre que les {len(items)} premiers titres d'une playlist sans connexion. "
                        "Pour la playlist entière, exporte-la avec Exportify (CSV).")
