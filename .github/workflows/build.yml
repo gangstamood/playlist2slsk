@@ -45,12 +45,16 @@ jobs:
           mkdir -p build/dmg
           cp -R dist/Playlist2Slsk.app build/dmg/
           ln -s /Applications build/dmg/Applications
+          cp packaging/Lisez-moi-Mac.txt "build/dmg/Lisez-moi.txt"
+          cp packaging/Lisez-moi-Mac.txt dist/Lisez-moi.txt
           hdiutil create -volname Playlist2Slsk -srcfolder build/dmg -ov -format UDZO \
             "dist/Playlist2Slsk-${{ matrix.label }}.dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: Playlist2Slsk-${{ matrix.label }}
-          path: dist/Playlist2Slsk-${{ matrix.label }}.dmg
+          path: |
+            dist/Playlist2Slsk-${{ matrix.label }}.dmg
+            dist/Lisez-moi.txt
       - if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -82,10 +86,13 @@ jobs:
           $env:APP_VERSION = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.${{ github.run_number }}" }
           & $iscc packaging\playlist2slsk.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item packaging\Lisez-moi-Windows.txt dist\Lisez-moi.txt
       - uses: actions/upload-artifact@v4
         with:
           name: Playlist2Slsk-Windows
-          path: dist/Playlist2Slsk-Windows-Setup.exe
+          path: |
+            dist/Playlist2Slsk-Windows-Setup.exe
+            dist/Lisez-moi.txt
       - if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:

@@ -1,0 +1,58 @@
+﻿PLAYLIST2SLSK — À LIRE AVANT DE COMMENCER
+==========================================
+
+Playlist2Slsk prend une playlist (Spotify, Deezer, YouTube, SoundCloud ou CSV)
+et télécharge les morceaux via Soulseek, renommés « Artiste - Titre », avec
+tags et pochette, prêts pour Traktor ou Rekordbox.
+
+
+1. INSTALLER
+------------
+   • Glisse l'icône Playlist2Slsk sur le dossier Applications (dans cette fenêtre).
+   • Ouvre Applications et double-clique sur Playlist2Slsk.
+
+
+2. SI MACOS BLOQUE L'APPLI (normal la première fois)
+----------------------------------------------------
+   L'appli n'est pas signée par un compte développeur Apple payant, donc macOS
+   affiche « Apple ne peut pas vérifier… ».
+
+   • Clique sur Terminé (ou OK).
+   • Va dans  Réglages Système › Confidentialité et sécurité.
+   • Descends jusqu'à la ligne qui parle de Playlist2Slsk
+     et clique sur « Ouvrir quand même ». Confirme avec ton mot de passe.
+
+   Sur un macOS plus ancien : clic droit sur l'appli › Ouvrir › Ouvrir.
+
+   Si macOS demande l'accès à Documents, Musique ou Téléchargements :
+   clique sur Autoriser (c'est là que l'appli range tes morceaux).
+
+
+3. PREMIER LANCEMENT
+--------------------
+   • Connecte-toi à Soulseek. Pas de compte ? Invente un identifiant et un mot
+     de passe : Soulseek crée le compte tout seul. Note-les bien.
+     Si tu utilises déjà Soulseek ailleurs (Nicotine+…), prends un compte à part.
+   • Onglet Réglages : choisis le dossier de destination et le format
+     (« FLAC si possible » est un bon choix pour mixer).
+
+
+4. CHARGER UNE PLAYLIST
+-----------------------
+   • Spotify : envoie d'abord ton e-mail Spotify à Alan pour qu'il t'autorise.
+     Puis Se connecter et choisis une de tes playlists ou tes titres likés.
+   • Deezer : colle le lien d'une playlist publique.
+   • YouTube / SoundCloud : colle le lien.
+   • CSV : pour une playlist Spotify qui n'est pas à toi, bouton Exportify.
+
+   Clique sur Télécharger. Un morceau introuvable ? Clique dessus pour corriger
+   son titre et relancer la recherche.
+
+
+5. UN SOUCI ?
+-------------
+   Envoie à Alan une capture d'écran et le fichier
+   ~/.playlist2slsk/appli.log
+   (dans le Finder : Aller › Aller au dossier…, puis colle ce chemin).
+
+Astuce : clic droit sur l'icône dans le Dock › Options › Garder dans le Dock.

@@ -1,0 +1,55 @@
+﻿PLAYLIST2SLSK — À LIRE AVANT DE COMMENCER
+==========================================
+
+Playlist2Slsk prend une playlist (Spotify, Deezer, YouTube, SoundCloud ou CSV)
+et télécharge les morceaux via Soulseek, renommés « Artiste - Titre », avec
+tags et pochette, prêts pour Traktor ou Rekordbox.
+
+
+1. INSTALLER
+------------
+   • Double-clique sur Playlist2Slsk-Windows-Setup.exe.
+   • Suis l'installateur (pas besoin d'être administrateur), puis Terminer.
+   • L'appli se lance ensuite depuis le menu Démarrer ou l'icône du Bureau.
+
+
+2. SI WINDOWS BLOQUE L'INSTALLATION (normal la première fois)
+-------------------------------------------------------------
+   L'appli n'est pas signée, donc Windows affiche un écran bleu
+   « Windows a protégé votre ordinateur ».
+
+   • Clique sur « Informations complémentaires »,
+     puis sur « Exécuter quand même ».
+   • Si le pare-feu demande l'accès au réseau pour Playlist2Slsk ou sockseek :
+     clique sur Autoriser (sinon Soulseek ne peut pas télécharger).
+   • Si ton antivirus bloque l'appli : autorise-la (fausse alerte fréquente).
+   • Fenêtre blanche sur un vieux Windows 10 : installe
+     « Microsoft Edge WebView2 Runtime » depuis le site de Microsoft.
+
+
+3. PREMIER LANCEMENT
+--------------------
+   • Connecte-toi à Soulseek. Pas de compte ? Invente un identifiant et un mot
+     de passe : Soulseek crée le compte tout seul. Note-les bien.
+     Si tu utilises déjà Soulseek ailleurs (Nicotine+…), prends un compte à part.
+   • Onglet Réglages : choisis le dossier de destination et le format
+     (« FLAC si possible » est un bon choix pour mixer).
+
+
+4. CHARGER UNE PLAYLIST
+-----------------------
+   • Spotify : envoie d'abord ton e-mail Spotify à Alan pour qu'il t'autorise.
+     Puis Se connecter et choisis une de tes playlists ou tes titres likés.
+   • Deezer : colle le lien d'une playlist publique.
+   • YouTube / SoundCloud : colle le lien.
+   • CSV : pour une playlist Spotify qui n'est pas à toi, bouton Exportify.
+
+   Clique sur Télécharger. Un morceau introuvable ? Clique dessus pour corriger
+   son titre et relancer la recherche.
+
+
+5. UN SOUCI ?
+-------------
+   Envoie à Alan une capture d'écran et le fichier
+   %USERPROFILE%\.playlist2slsk\appli.log
+   (colle ce chemin dans la barre d'adresse de l'Explorateur).

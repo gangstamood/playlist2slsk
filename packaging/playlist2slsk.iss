@@ -33,12 +33,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\Playlist2Slsk\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "Lisez-moi-Windows.txt"; DestDir: "{app}"; DestName: "Lisez-moi.txt"; Flags: ignoreversion
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\_internal"
 
 [Icons]
 Name: "{autoprograms}\Playlist2Slsk"; Filename: "{app}\Playlist2Slsk.exe"
+Name: "{autoprograms}\Playlist2Slsk - Lisez-moi"; Filename: "{app}\Lisez-moi.txt"
 Name: "{autodesktop}\Playlist2Slsk"; Filename: "{app}\Playlist2Slsk.exe"; Tasks: desktopicon
 
 [Run]
