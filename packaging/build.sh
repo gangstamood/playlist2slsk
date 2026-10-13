@@ -4,6 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 TARGET="$1"
+# Limite de temps (timeout n'existe pas sur macOS)
+tlimit() { local t=$1; shift; if command -v timeout >/dev/null; then timeout "$t" "$@"; else perl -e 'alarm shift; exec @ARGV' "$t" "$@"; fi; }
 
 # 1. sockseek pour la plateforme visée
 rm -rf build/sockseek && mkdir -p build/sockseek build/dl
@@ -34,7 +36,7 @@ BIN=$(find build/dl/x -type f -name "$EXE" | head -1)
 cp -R "$(dirname "$BIN")"/. build/sockseek/
 chmod +x "build/sockseek/$EXE"
 echo "--- sockseek --help (options utilisées par l'appli) ---"
-"build/sockseek/$EXE" --help 2>&1 | grep -E -- "--config|--progress-json|--name-format" || echo "(attention : options non trouvées dans --help)"
+tlimit 60 "build/sockseek/$EXE" --help 2>&1 < /dev/null | grep -E -- "--config|--progress-json|--name-format" || echo "(attention : options non trouvées dans --help)"
 
 # 2. Client ID Spotify partagé (facultatif, pas secret)
 if [ -n "${SPOTIFY_CLIENT_ID:-}" ]; then printf '%s' "$SPOTIFY_CLIENT_ID" > build/spotify-client-id.txt
@@ -56,7 +58,9 @@ pyinstaller "${ARGS[@]}" desktop.py
 
 # 4. Contrôle : l'exécutable sait faire tourner le script de téléchargement
 if [ "$TARGET" = win-x64 ]; then
-  ./dist/Playlist2Slsk/Playlist2Slsk.exe --p2s-script --help | head -3
+  tlimit 120 ./dist/Playlist2Slsk/Playlist2Slsk.exe --p2s-script --help > build/smoke.txt 2>&1 || true
+  cat build/smoke.txt
+  grep -q "usage:" build/smoke.txt || { echo "L'exécutable ne fait pas tourner le script"; exit 1; }
 else
   APP=dist/Playlist2Slsk.app
   /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Playlist2Slsk" "$APP/Contents/Info.plist" 2>/dev/null \

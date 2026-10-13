@@ -16,11 +16,38 @@ BASE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 LOG_DIR = Path.home() / ".playlist2slsk"
 
 
+def _std_streams() -> None:
+    """Exécutable sans console (Windows) : on rebranche la sortie sur le tuyau fourni par l'appli."""
+    if sys.platform != "win32" or (sys.stdout is not None and sys.stderr is not None):
+        return
+    import ctypes
+    import msvcrt
+    for num, name in ((-11, "stdout"), (-12, "stderr")):
+        if getattr(sys, name) is not None:
+            continue
+        h = ctypes.windll.kernel32.GetStdHandle(num)
+        stream = None
+        if h not in (0, -1, None):
+            try:
+                stream = open(msvcrt.open_osfhandle(h, 0), "w", encoding="utf-8", errors="replace", buffering=1)
+            except OSError:
+                stream = None
+        setattr(sys, name, stream or open(os.devnull, "w"))
+
+
 def run_script() -> None:
+    _std_streams()
     sys.argv = [sys.argv[0], *sys.argv[2:]]
     sys.path.insert(0, str(BASE))
     import playlist2slsk
-    playlist2slsk.main()
+    try:
+        playlist2slsk.main()
+    except SystemExit:
+        raise
+    except BaseException:   # pas de fenêtre d'erreur bloquante : on écrit l'erreur et on sort
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 def main() -> None:

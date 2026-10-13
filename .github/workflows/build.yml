@@ -24,6 +24,7 @@ jobs:
             target: osx-x64
             label: Mac-Intel
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -52,6 +53,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
