@@ -1333,6 +1333,18 @@ def open_path(path: str) -> dict:
     return {"ok": True}
 
 
+def open_url(url: str) -> dict:
+    """Ouvre un lien web dans le navigateur de l'ordinateur (la fenêtre de l'appli n'a pas d'onglets)."""
+    url = (url or "").strip()
+    if not re.match(r"https?://[^\s]+$", url) or len(url) > 8000:
+        return {"error": "Lien invalide."}
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", url])
+    elif not webbrowser.open(url):
+        return {"error": "Impossible d'ouvrir le navigateur."}
+    return {"ok": True}
+
+
 def info() -> dict:
     s = load_settings()
     conf = read_conf()
@@ -1548,6 +1560,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/rekordbox": lambda: send_rekordbox(body),
             "/api/pick-folder": pick_folder,
             "/api/open": lambda: open_path(body.get("path", "")),
+            "/api/open_url": lambda: open_url(body.get("url", "")),
             "/api/reveal": lambda: reveal(body.get("path", "")),
             "/api/follow": lambda: follow(body),
             "/api/forget": lambda: forget_history(body),

@@ -794,6 +794,16 @@ async function api(path, body) {
   const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   return r.json();
 }
+// Les liens web s'ouvrent dans le navigateur de l'ordinateur, jamais dans la fenêtre de l'appli.
+async function openExt(url) {
+  const r = await api("/api/open_url", { url }).catch(() => ({ error: "Impossible d'ouvrir le lien." }));
+  if (r.error) toast(r.error);
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("a[href]");
+  if (!a || !/^https?:\/\//i.test(a.href) || new URL(a.href).host === location.host) return;
+  e.preventDefault(); openExt(a.href);
+}, true);
 const fmt = s => s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "";
 function show(id) { for (const s of ["#step-load", "#step-list", "#step-run"]) $(s).classList.toggle("hidden", s !== id); }
 
@@ -962,7 +972,7 @@ $("#report").onclick = async () => {
   let copied = false;
   try { await navigator.clipboard.writeText(d.text); copied = true; } catch (e) {}
   const body = "**Ce qui s'est passé :**\n\n\n**Ce que tu attendais :**\n\n\n**Diagnostic :**\n```\n" + (copied ? "(colle ici le diagnostic copié)" : d.text.slice(0, 5000)) + "\n```";
-  window.open(d.issues + "?labels=bug&body=" + encodeURIComponent(body), "_blank", "noopener");
+  openExt(d.issues + "?labels=bug&body=" + encodeURIComponent(body));
   toast(copied ? "Diagnostic copié : colle-le dans le signalement qui vient de s'ouvrir." : "Le signalement s'ouvre avec le diagnostic déjà rempli.");
 };
 
@@ -1577,7 +1587,7 @@ for (const id of ["#toggle-log", "#toggle-log2"]) $(id).onclick = () => {
 let exportWatch = null;
 function stopExportWatch() { clearTimeout(exportWatch); exportWatch = null; $("#exportify-wait").classList.add("hidden"); }
 $("#exportify-go").onclick = () => {
-  window.open("https://exportify.app", "_blank", "noopener");
+  openExt("https://exportify.app");
   const since = Date.now() / 1000 - 2, until = Date.now() + 15 * 60 * 1000;
   $("#exportify-wait").classList.remove("hidden");
   const tick = async () => {
