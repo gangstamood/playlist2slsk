@@ -1,4 +1,9 @@
-Première version publique de **Playlist2Slsk** : colle le lien d'une playlist, récupère des fichiers audio propres et rangés, via Soulseek.
+Correctifs de **Playlist2Slsk** 1.0.1.
+
+## Nouveautés
+- Les liens (Exportify, « Signaler un problème », crédits, boutons Bandcamp) s'ouvrent maintenant dans un onglet de ton navigateur, plus dans la fenêtre de l'appli.
+
+Si tu as déjà la 1.0.0, installe simplement celle-ci par-dessus : tes réglages et tes playlists sont conservés.
 
 ## Télécharger
 - **Mac Apple Silicon** (M1, M2, M3…) : `Playlist2Slsk-Mac-AppleSilicon.dmg`
@@ -7,7 +12,7 @@ Première version publique de **Playlist2Slsk** : colle le lien d'une playlist, 
 
 Premier lancement : l'appli n'est pas encore signée. Sur Mac, Réglages Système › Confidentialité et sécurité › « Ouvrir quand même ». Sur Windows, « Informations complémentaires » › « Exécuter quand même ».
 
-## Ce qu'elle fait
+## Ce que fait l'appli
 - Playlists Spotify (lien public ou export Exportify), Deezer, YouTube, SoundCloud, Bandcamp (wishlist, collection, albums) et CSV
 - Recherche et téléchargement sur Soulseek avec sockseek, FLAC ou MP3 au choix
 - Fichiers renommés `Artiste - Titre`, tags réécrits, pochettes intégrées, détection des faux FLAC
