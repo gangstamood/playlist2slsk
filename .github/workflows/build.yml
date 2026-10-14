@@ -90,7 +90,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/Playlist2Slsk-${{ matrix.label }}.dmg
-          generate_release_notes: true
+          name: Playlist2Slsk ${{ github.ref_name }}
+          body_path: packaging/release-notes.md
 
   windows:
     runs-on: windows-latest
@@ -143,4 +144,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/Playlist2Slsk-Windows-Setup.exe
-          generate_release_notes: true
+          name: Playlist2Slsk ${{ github.ref_name }}
+          body_path: packaging/release-notes.md
