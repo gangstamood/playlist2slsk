@@ -38,7 +38,7 @@ try:
     VERSION = (HERE / "VERSION").read_text("utf-8").strip()
 except OSError:
     VERSION = "dev"
-UPDATE_REPO = os.environ.get("P2S_UPDATE_REPO", "gangstamood/playlist2slsk-site")   # où sont publiés les installateurs (site + Releases)
+UPDATE_REPO = os.environ.get("P2S_UPDATE_REPO", "gangstamood/playlist2slsk")   # où sont publiés les installateurs (Releases)
 SOURCE_REPO = os.environ.get("P2S_SOURCE_REPO", "gangstamood/playlist2slsk")         # code source et signalements
 WIN = sys.platform == "win32"
 # Sous Windows, les programmes lancés en arrière-plan n'ouvrent pas de fenêtre noire.
