@@ -15,6 +15,7 @@ import base64
 import hashlib
 import json
 import os
+import platform
 import re
 import secrets
 import signal
@@ -33,6 +34,11 @@ import requests
 
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))   # _MEIPASS : appli empaquetée
 FROZEN = bool(getattr(sys, "frozen", False))
+try:
+    VERSION = (HERE / "VERSION").read_text("utf-8").strip()
+except OSError:
+    VERSION = "dev"
+UPDATE_REPO = os.environ.get("P2S_UPDATE_REPO", "gangstamood/playlist2slsk")   # où sont publiées les versions
 WIN = sys.platform == "win32"
 # Sous Windows, les programmes lancés en arrière-plan n'ouvrent pas de fenêtre noire.
 NOWIN = {"creationflags": 0x08000000} if WIN else {}   # CREATE_NO_WINDOW
@@ -63,6 +69,8 @@ DEFAULTS = {
     "export_traktor": False,        # <playlist>.nml à importer dans Traktor
     "export_rekordbox": False,      # playlist ajoutée à <dossier racine>/rekordbox.xml
     "stale_s": 15,                  # secondes sans recevoir d'octet avant de changer de source (sockseek : 30)
+    "legal_ok": False,              # avertissement d'usage accepté au premier lancement
+    "check_updates": True,          # vérifier au lancement s'il existe une nouvelle version
     "rekordbox_ready": False,       # le mode d'emploi Rekordbox a déjà été montré une fois
     "pattern": "{artist} - {title}",
     "match": "normal",              # normal | strict | wide
@@ -1339,7 +1347,70 @@ def info() -> dict:
         "mac": sys.platform == "darwin",
         "picker": sys.platform == "darwin" or bool(os.environ.get("P2S_NATIVE_PICKER")),
         "packaged": FROZEN,
+        "version": VERSION,
+        "repo": UPDATE_REPO,
+        "os": platform.platform(terse=True),
     }
+
+
+# --------------------------------------------------------------------------- #
+# Nouvelle version et signalement de problème
+# --------------------------------------------------------------------------- #
+_UPDATE: dict = {}
+
+
+def _vtuple(v: str) -> tuple:
+    return tuple(int(x) for x in re.findall(r"\d+", v)[:3]) or (0,)
+
+
+def check_update(force: bool = False) -> dict:
+    """Dernière version publiée sur GitHub (une fois par lancement, sauf si on la redemande)."""
+    if not load_settings().get("check_updates", True) and not force:
+        return {"newer": False}
+    if _UPDATE and not force:
+        return _UPDATE
+    try:
+        r = requests.get(f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest",
+                         headers={"Accept": "application/vnd.github+json"}, timeout=6)
+        if r.status_code != 200:
+            return {"newer": False, "error": f"pas de version publiée ({r.status_code})"}
+        rel = r.json()
+        latest = rel.get("tag_name", "").lstrip("v")
+        url = rel.get("html_url", "")
+        if not url.startswith(f"https://github.com/{UPDATE_REPO}/"):
+            url = f"https://github.com/{UPDATE_REPO}/releases/latest"
+        _UPDATE.clear()
+        _UPDATE.update(latest=latest, url=url, current=VERSION,
+                       newer=VERSION != "dev" and _vtuple(latest) > _vtuple(VERSION),
+                       notes=(rel.get("body") or "")[:1500])
+    except (requests.RequestException, ValueError) as e:
+        return {"newer": False, "error": str(e)}
+    return _UPDATE
+
+
+def diagnostic() -> dict:
+    """Texte à joindre à un signalement : versions, réglages (sans identifiants) et fin du journal."""
+    s = load_settings()
+    keep = {k: v for k, v in s.items() if k not in ("spotify_secret", "spotify_id", "banned_users", "library_dirs", "out")}
+    bin_path = p2s.find_sockseek(None) or ""
+    with S.lock:
+        lines = S.lines[-60:]
+        counts: dict = {}
+        for st in S.status.values():
+            counts[st] = counts.get(st, 0) + 1
+    home = str(Path.home())
+    text = "\n".join([
+        f"Playlist2Slsk {VERSION} · {platform.platform(terse=True)} · Python {platform.python_version()}"
+        + (" · appli installée" if FROZEN else ""),
+        f"sockseek : {'trouvé' if bin_path else 'introuvable'} · --progress-json : {bool(bin_path) and progress_json_supported(bin_path)}",
+        f"Dernier lot : {counts or 'aucun'}",
+        "Réglages : " + json.dumps(keep, ensure_ascii=False),
+        "", "Fin du journal :", *lines,
+    ]).replace(home, "~")
+    user = read_conf().get("username")
+    if user:
+        text = text.replace(user, "<pseudo>")
+    return {"text": text, "issues": f"https://github.com/{UPDATE_REPO}/issues/new"}
 
 
 # --------------------------------------------------------------------------- #
@@ -1397,6 +1468,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json(newest_download_csv(float((parse_qs(u.query).get("since") or ["0"])[0] or 0)))
         elif u.path == "/api/history":
             self._json(history())
+        elif u.path == "/api/update":
+            self._json(check_update(force=bool(parse_qs(u.query).get("force"))))
+        elif u.path == "/api/diag":
+            self._json(diagnostic())
         elif u.path == "/api/busy":
             self._json({"busy": bool(S.running or SYNC["active"])})
         elif u.path == "/api/status":

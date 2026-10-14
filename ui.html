@@ -27,6 +27,15 @@ body { font: 15px/1.45 var(--display); -webkit-font-smoothing: antialiased; }
 main { max-width: 1100px; margin: 0 auto; padding: 28px 40px 80px; }
 .credit { margin-top: 56px; padding-top: 14px; border-top: 2px solid var(--line); font: 11.5px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .credit b { color: var(--text); font-weight: 600; }
+.credit a { color: inherit; }
+.about-h { margin: 26px 0 8px; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.legal { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; max-width: 760px; }
+.legal a, .credits a { color: inherit; }
+.credits { margin: 6px 0 10px; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.credits a { color: var(--text); }
+.row-acts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.banner.upd { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); margin-bottom: 18px; }
+.banner.upd a { color: inherit; font-weight: 700; }
 header { display: flex; align-items: center; gap: 24px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 2px solid var(--line); }
 .logo { display: none; }
 h1 { font-size: 22px; font-weight: 900; margin: 0; letter-spacing: -0.03em; text-transform: uppercase; }
@@ -368,6 +377,7 @@ body.has-player main { padding-bottom: 130px; }
   <div id="warn"></div>
 
   <div id="view-dl">
+    <div id="upd-banner" class="banner upd hidden"></div>
     <!-- 1. Choisir la playlist -->
     <section id="step-load" class="card">
       <h2 class="load-title">D'où vient ta playlist ?</h2>
@@ -658,8 +668,35 @@ body.has-player main { padding-bottom: 130px; }
       <p class="sub">Options passées telles quelles à sockseek.</p>
       <input type="text" data-key="extra" placeholder="ex. --max-stale-time 60000 --search-timeout 8000" spellcheck="false">
     </section>
+
+    <section class="card" id="about">
+      <h3>À propos</h3>
+      <p class="sub" id="about-version"></p>
+      <div class="stack">
+        <div class="row-acts"><button id="upd-check" class="btn" type="button">Chercher une mise à jour</button><span id="upd-msg" class="hint" style="margin:0"></span></div>
+        <label class="check"><input type="checkbox" data-key="check_updates"> Vérifier à chaque lancement s'il y a une nouvelle version</label>
+        <div class="row-acts"><button id="report" class="btn" type="button">Signaler un problème</button><span class="hint" style="margin:0">Copie un diagnostic (sans mot de passe ni pseudo) et ouvre la page de signalement.</span></div>
+      </div>
+      <h4 class="about-h">Utilisation</h4>
+      <p class="legal">Playlist2Slsk est un outil qui cherche et télécharge des fichiers sur le réseau Soulseek, partagés par ses utilisateurs. Tu es seul responsable de ce que tu télécharges et partages : respecte le droit d'auteur de ton pays et télécharge uniquement ce que tu as le droit d'avoir (ta propre musique, des œuvres libres ou avec l'accord des ayants droit). Soutiens les artistes : le bouton Bandcamp mène à l'achat du morceau.</p>
+      <p class="legal">L'appli n'est ni affiliée à, ni approuvée par Spotify, Deezer, YouTube, SoundCloud, Bandcamp, Soulseek, AlphaTheta (Rekordbox) ou Native Instruments (Traktor). Ces noms sont des marques de leurs propriétaires et ne servent qu'à indiquer la compatibilité. Les playlists sont lues depuis les pages publiques de ces services, qui peuvent changer à tout moment.</p>
+      <p class="legal">Tout reste sur ton ordinateur : l'appli n'envoie aucune donnée à son auteur. Ton mot de passe Soulseek est enregistré uniquement dans <code>~/.config/sockseek/sockseek.conf</code>.</p>
+      <h4 class="about-h">Licence et crédits</h4>
+      <p class="legal">Logiciel libre sous licence <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL v3</a>, fourni sans aucune garantie. Code source : <a id="code-link" target="_blank" rel="noopener"></a>. Conçu par <b>Lutin</b>.</p>
+      <ul class="credits">
+        <li><a href="https://github.com/fiso64/sockseek" target="_blank" rel="noopener">sockseek</a> de fiso64, le moteur de recherche et de téléchargement Soulseek (AGPL v3, livré avec l'appli)</li>
+        <li><a href="https://github.com/jpdillingham/Soulseek.NET" target="_blank" rel="noopener">Soulseek.NET</a>, utilisé par sockseek (GPL v3)</li>
+        <li><a href="https://github.com/quodlibet/mutagen" target="_blank" rel="noopener">mutagen</a> pour les tags (GPL v2+)</li>
+        <li><a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a> pour YouTube et SoundCloud (Unlicense)</li>
+        <li><a href="https://github.com/psf/requests" target="_blank" rel="noopener">Requests</a> (Apache 2.0), <a href="https://numpy.org" target="_blank" rel="noopener">NumPy</a> et <a href="https://github.com/bastibe/python-soundfile" target="_blank" rel="noopener">python-soundfile</a> / libsndfile (BSD, LGPL 2.1)</li>
+        <li><a href="https://github.com/r0x0r/pywebview" target="_blank" rel="noopener">pywebview</a> (BSD) et <a href="https://pyinstaller.org" target="_blank" rel="noopener">PyInstaller</a> pour l'appli installable, <a href="https://www.python.org" target="_blank" rel="noopener">Python</a> (PSF)</li>
+        <li><a href="https://exportify.app" target="_blank" rel="noopener">Exportify</a> de Pavel Komarov pour l'export des playlists Spotify, et l'API iTunes Search pour les pochettes</li>
+        <li>Polices Archivo et IBM Plex Mono (SIL Open Font License)</li>
+      </ul>
+      <p class="hint">Le détail des licences est dans le fichier CREDITS.md livré avec l'appli.</p>
+    </section>
   </div>
-  <footer class="credit">Powered by <b>Lutin</b></footer>
+  <footer class="credit">Powered by <b>Lutin</b> <span id="foot-v"></span> · <a href="#" id="foot-about">Mentions et licences</a></footer>
 </main>
 <div id="plm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="plm-title">
   <div class="modal-box plm-box">
@@ -682,6 +719,16 @@ body.has-player main { padding-bottom: 130px; }
     </ol>
     <p class="hint" style="margin:0">Les étapes 1 et 2 ne se font qu'une fois. Ensuite, après chaque envoi, clique sur l'icône ↻ à côté de « rekordbox xml » pour voir les nouveautés.</p>
     <div class="acts"><button id="rbm-ok" class="primary" type="button">Compris</button><button id="rbm-show" class="link" type="button">Afficher le fichier</button></div>
+  </div>
+</div>
+<div id="legal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="legal-title">
+  <div class="modal-box">
+    <span class="kicker">Avant de commencer</span>
+    <h2 id="legal-title">Bienvenue</h2>
+    <p>Playlist2Slsk cherche les morceaux de tes playlists sur le réseau Soulseek, où ils sont partagés par d'autres utilisateurs.</p>
+    <p><b>Tu es seul responsable de ce que tu télécharges.</b> Respecte le droit d'auteur : télécharge uniquement ce que tu as le droit d'avoir, et soutiens les artistes (le bouton Bandcamp mène à l'achat).</p>
+    <p>L'appli n'est affiliée à aucun des services qu'elle lit (Spotify, Soulseek, Bandcamp…). Tout reste sur ton ordinateur.</p>
+    <div class="acts"><button id="legal-ok" class="primary" type="button">J'ai compris</button><button id="legal-more" class="link" type="button">Mentions complètes</button></div>
   </div>
 </div>
 <div id="login" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
@@ -871,10 +918,53 @@ async function boot() {
     if (back === "ok") { toast(`Connecté à Spotify${info.spotify.user ? " : " + info.spotify.user : ""}.`); pickSource("spotify"); }
     else toast(back === "refus" ? "Connexion Spotify annulée." : `Connexion Spotify impossible : ${back}`);
   }
+  renderAbout();
   const st = await api("/api/status?since=0");
   if (st.running || st.sync.active) attach();   // ex. mise à jour automatique au lancement
+  else if (!settings.legal_ok) $("#legal").classList.remove("hidden");
   else if (info.sockseek && !info.conf) openLogin();
+  if (settings.check_updates !== false) api("/api/update").then(showUpdate);
 }
+
+// ---------- Mentions, version, mises à jour, signalement ----------
+$("#legal-ok").onclick = () => {
+  setSetting("legal_ok", true);
+  $("#legal").classList.add("hidden");
+  if (info.sockseek && !info.conf) openLogin();
+};
+$("#legal-more").onclick = () => { $("#legal").classList.add("hidden"); setSetting("legal_ok", true); showAbout(); };
+function showAbout() { tab("settings"); setTimeout(() => $("#about").scrollIntoView({ behavior: "smooth" }), 50); }
+$("#foot-about").onclick = e => { e.preventDefault(); showAbout(); };
+function renderAbout() {
+  const v = info.version === "dev" ? "version de développement" : `version ${info.version}`;
+  $("#about-version").textContent = `Playlist2Slsk, ${v}${info.os ? " · " + info.os : ""}.`;
+  $("#foot-v").textContent = info.version === "dev" ? "" : `· v${info.version}`;
+  const src = `https://github.com/${info.repo}`;
+  $("#code-link").href = src; $("#code-link").textContent = src.replace("https://", "");
+}
+function showUpdate(u) {
+  const b = $("#upd-banner");
+  if (!u || !u.newer) { b.classList.add("hidden"); return false; }
+  b.textContent = "";
+  b.append(el("span", {}, `Nouvelle version ${u.latest} disponible (tu as la ${u.current}).`),
+    el("a", { href: u.url, target: "_blank", rel: "noopener" }, "Télécharger"));
+  b.classList.remove("hidden");
+  return true;
+}
+$("#upd-check").onclick = async () => {
+  const m = $("#upd-msg"); m.textContent = "Vérification…";
+  const u = await api("/api/update?force=1");
+  m.textContent = showUpdate(u) ? `La version ${u.latest} est disponible : voir en haut de l'onglet Télécharger.`
+    : u.error ? `Impossible de vérifier (${u.error}).` : `Tu as la dernière version${u.latest ? " (" + u.latest + ")" : ""}.`;
+};
+$("#report").onclick = async () => {
+  const d = await api("/api/diag");
+  let copied = false;
+  try { await navigator.clipboard.writeText(d.text); copied = true; } catch (e) {}
+  const body = "**Ce qui s'est passé :**\n\n\n**Ce que tu attendais :**\n\n\n**Diagnostic :**\n```\n" + (copied ? "(colle ici le diagnostic copié)" : d.text.slice(0, 5000)) + "\n```";
+  window.open(d.issues + "?labels=bug&body=" + encodeURIComponent(body), "_blank", "noopener");
+  toast(copied ? "Diagnostic copié : colle-le dans le signalement qui vient de s'ouvrir." : "Le signalement s'ouvre avec le diagnostic déjà rempli.");
+};
 
 // ---------- Connexion Soulseek (premier lancement) ----------
 function openLogin() {

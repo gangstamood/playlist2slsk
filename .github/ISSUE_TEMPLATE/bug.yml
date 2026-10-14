@@ -1,0 +1,18 @@
+name: Signaler un problème
+description: Quelque chose ne marche pas comme prévu
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: Ce qui s'est passé
+      description: Ce que tu as fait, et ce qui s'est passé.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Ce que tu attendais
+  - type: textarea
+    attributes:
+      label: Diagnostic
+      description: Dans l'appli, Réglages › À propos › « Signaler un problème » copie ce diagnostic (sans mot de passe ni pseudo). Colle-le ici.
+      render: text

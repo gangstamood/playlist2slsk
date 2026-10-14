@@ -1,0 +1,9 @@
+name: Proposer une idée
+description: Une fonction qui te manque
+labels: [idée]
+body:
+  - type: textarea
+    attributes:
+      label: Ton idée
+    validations:
+      required: true

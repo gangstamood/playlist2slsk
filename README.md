@@ -41,7 +41,7 @@ Aussi dans l'interface :
 - **Faux FLAC** : chaque FLAC est analysé (spectre). Les suspects sont signalés et un bouton les remplace par une autre source.
 - **Déjà dans ta bibliothèque** : Réglages › Fichiers, indique tes dossiers de musique pour ne pas retélécharger ce que tu as.
 - **Traktor et Rekordbox** : Réglages › DJ crée un `.nml` par playlist et tient à jour un `rekordbox.xml`.
-- **Spotify sans Exportify** : bouton Spotify › *Se connecter à Spotify* (une app gratuite à créer une fois sur developer.spotify.com, compte Premium exigé par Spotify, Redirect URI `http://127.0.0.1:8765/spotify/callback`). Tu choisis ensuite une de tes playlists ou tes titres likés. Spotify ne donne le contenu que de tes propres playlists.
+- **Spotify sans compte** : colle le lien d'une playlist publique ou d'un album (jusqu'à 100 titres). Pour une playlist privée, plus longue ou tes titres likés, passe par Exportify : le CSV est récupéré automatiquement dans Téléchargements.
 - **Playlists suivies** : sur un lien Spotify, YouTube ou SoundCloud, *+ Suivre*. L'onglet *Playlists* met à jour une ou toutes les playlists en ne téléchargeant que les nouveaux morceaux, éventuellement à chaque ouverture.
 
 > Au premier lancement, macOS peut bloquer `Lancer.command` : clic droit → *Ouvrir*. Le premier lancement crée un environnement Python `.venv` dans le dossier et y installe les dépendances. S'il n'est pas exécutable : `chmod +x Lancer.command`.
@@ -117,9 +117,13 @@ GitHub Actions construit les installateurs à chaque envoi sur `main` (onglet **
 
 Python, sockseek et l'interface sont inclus : rien d'autre à installer. Le point d'entrée est `desktop.py` (fenêtre pywebview) et la recette est dans `packaging/build.sh`.
 
-Pour publier une version : créer un tag `v1.0`, `v1.1`… Les installateurs sont alors joints à une Release.
+Pour publier une version : mettre le numéro dans `VERSION`, puis créer le tag correspondant (`v1.0.0`, `v1.1.0`…). Les installateurs sont joints à une Release, et les applis déjà installées le signalent au lancement (elles interrogent `releases/latest` de ce dépôt ; à désactiver dans Réglages › À propos).
 
-**Premier lancement chez un ami.** L'appli n'est pas signée par un compte développeur Apple ou Microsoft :
+**Signature (facultative).** Sans secrets, les applis sont signées localement (« Ouvrir quand même »). Avec ces secrets du dépôt, la construction signe et notarise automatiquement :
+- Mac (compte Apple Developer, 99 $/an) : `MAC_CERT_P12` (certificat « Developer ID Application » exporté en .p12, en base64), `MAC_CERT_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` (mot de passe d'app créé sur appleid.apple.com).
+- Windows (certificat de signature de code) : `WIN_CERT_PFX` (.pfx en base64) et `WIN_CERT_PASSWORD`.
+
+**Premier lancement d'une version non signée :**
 - Mac : ouvrir le .dmg, glisser l'appli dans Applications, l'ouvrir une fois, puis Réglages Système › Confidentialité et sécurité › « Ouvrir quand même ».
 - Windows : à l'écran bleu « Windows a protégé votre ordinateur », cliquer « Informations complémentaires » › « Exécuter quand même ».
 
@@ -127,6 +131,16 @@ Pour publier une version : créer un tag `v1.0`, `v1.1`… Les installateurs son
 
 ## Sources de playlist
 
-Spotify (connexion), Deezer (playlist publique), YouTube, SoundCloud, **Bandcamp** et CSV.
+Spotify (lien public ou Exportify), Deezer (playlist publique), YouTube, SoundCloud, **Bandcamp** et CSV.
 
 Bandcamp n'a pas d'API publique : `read_bandcamp_url` lit les données embarquées dans les pages (`data-tralbum` pour un album ou un morceau, `data-blob` pour une page fan) et l'API interne `fancollection/1/{wishlist,collection}_items` pour la wishlist et la collection, qui doivent être publiques. Chaque album est déplié en ses morceaux ; sur une compilation, « Artiste - Titre » est séparé. Le bouton Bandcamp d'un morceau venu de Bandcamp pointe directement sur sa page.
+
+## Licence, crédits et utilisation
+
+© Lutin. Logiciel libre sous licence **GNU AGPL v3** (voir `LICENSE`), fourni sans aucune garantie. L'appli livre **sockseek** de fiso64 (AGPL v3) sans modification ; le détail des composants et de leurs licences est dans [`CREDITS.md`](CREDITS.md) et dans l'appli (Réglages › À propos).
+
+Playlist2Slsk télécharge des fichiers partagés par les utilisateurs du réseau Soulseek. Chaque utilisateur est seul responsable de ce qu'il télécharge et partage, et doit respecter le droit d'auteur applicable. Soutiens les artistes : le bouton Bandcamp mène à l'achat du morceau.
+
+Spotify, Deezer, YouTube, SoundCloud, Bandcamp, Soulseek, rekordbox et Traktor sont des marques de leurs propriétaires. Ce projet n'est ni affilié à, ni approuvé par ces sociétés ; leurs noms indiquent seulement la compatibilité. Les playlists sont lues depuis les pages publiques de ces services, qui peuvent changer sans prévenir.
+
+Un problème ou une idée : onglet *Issues* du dépôt, ou dans l'appli Réglages › À propos › *Signaler un problème*.

@@ -1,4 +1,4 @@
-; Installateur Windows (Inno Setup). Construit par GitHub Actions après PyInstaller.
+﻿; Installateur Windows (Inno Setup). Construit par GitHub Actions après PyInstaller.
 #define AppVer GetEnv("APP_VERSION")
 #if AppVer == ""
   #define AppVer "1.0"
@@ -8,7 +8,10 @@
 AppId={{8F5B3C2A-6D41-4E8B-9A57-2C1F0B7E3D19}
 AppName=Playlist2Slsk
 AppVersion={#AppVer}
-AppPublisher=Playlist2Slsk
+AppPublisher=Lutin
+AppPublisherURL=https://github.com/gangstamood/playlist2slsk
+AppCopyright=© Lutin · GNU AGPL v3
+LicenseFile=..\LICENSE
 DefaultDirName={localappdata}\Programs\Playlist2Slsk
 DefaultGroupName=Playlist2Slsk
 DisableProgramGroupPage=yes
@@ -34,6 +37,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\dist\Playlist2Slsk\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "Lisez-moi-Windows.txt"; DestDir: "{app}"; DestName: "Lisez-moi.txt"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "Licence (GNU AGPL v3).txt"; Flags: ignoreversion
+Source: "..\CREDITS.md"; DestDir: "{app}"; DestName: "Crédits.txt"; Flags: ignoreversion
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\_internal"

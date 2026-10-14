@@ -55,3 +55,14 @@ tags et pochette, prêts pour Traktor ou Rekordbox.
    Envoie à Alan une capture d'écran et le fichier
    %USERPROFILE%\.playlist2slsk\appli.log
    (colle ce chemin dans la barre d'adresse de l'Explorateur).
+
+À SAVOIR
+Playlist2Slsk télécharge des fichiers partagés par les utilisateurs de Soulseek.
+Tu es seul responsable de ce que tu télécharges : respecte le droit d'auteur et
+soutiens les artistes (le bouton Bandcamp mène à l'achat du morceau).
+L'appli n'est affiliée à aucun des services qu'elle lit (Spotify, Soulseek, Bandcamp…).
+Tout reste sur ton ordinateur.
+
+Logiciel libre (GNU AGPL v3), fourni sans garantie. Crédits et licences :
+Réglages › À propos dans l'appli. Code source : https://github.com/gangstamood/playlist2slsk
+Un problème ? Réglages › À propos › « Signaler un problème ».
