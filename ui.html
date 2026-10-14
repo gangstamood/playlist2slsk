@@ -1234,6 +1234,7 @@ function dlText(d) {
   const pct = d.size ? Math.min(100, Math.floor((d.got || 0) / d.size * 100)) : null;
   const idle = srvNow && d.moved ? srvNow - d.moved : 0;
   const retry = d.tries > 1 ? ` · ${d.tries}e source` : "";
+  if (d.outcome === "Succeeded" || (d.size && d.got >= d.size)) return "reçu, rangé à la fin du lot";
   if (!d.got && idle > 6) return `en attente de ${d.user || "l'utilisateur"}${retry}…`;
   if (d.got && idle > 8) return `${pct}% · ${d.user || "la source"} ne répond plus, on va essayer ailleurs${retry}…`;
   return (pct !== null && d.got ? `${pct}% ` : "téléchargement ") + (d.user ? `depuis ${d.user}` : "") + retry;
