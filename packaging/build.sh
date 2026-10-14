@@ -47,7 +47,7 @@ if [ -n "${SPOTIFY_CLIENT_ID:-}" ]; then printf '%s' "$SPOTIFY_CLIENT_ID" > buil
 elif [ -f packaging/spotify-client-id.txt ]; then cp packaging/spotify-client-id.txt build/spotify-client-id.txt; fi
 
 # 3. Version (tag v1.2.3 → 1.2.3, sinon le fichier VERSION) et textes de licence livrés avec l'appli
-VER="${APP_VERSION:-$(cat VERSION)}"
+VER="${APP_VERSION:-$(cat VERSION)}"; VER="${VER#v}"
 printf '%s' "$VER" > build/VERSION
 echo "Version : $VER"
 
