@@ -38,7 +38,8 @@ try:
     VERSION = (HERE / "VERSION").read_text("utf-8").strip()
 except OSError:
     VERSION = "dev"
-UPDATE_REPO = os.environ.get("P2S_UPDATE_REPO", "gangstamood/playlist2slsk")   # où sont publiées les versions
+UPDATE_REPO = os.environ.get("P2S_UPDATE_REPO", "gangstamood/playlist2slsk-site")   # où sont publiés les installateurs (site + Releases)
+SOURCE_REPO = os.environ.get("P2S_SOURCE_REPO", "gangstamood/playlist2slsk")         # code source et signalements
 WIN = sys.platform == "win32"
 # Sous Windows, les programmes lancés en arrière-plan n'ouvrent pas de fenêtre noire.
 NOWIN = {"creationflags": 0x08000000} if WIN else {}   # CREATE_NO_WINDOW
@@ -1348,7 +1349,7 @@ def info() -> dict:
         "picker": sys.platform == "darwin" or bool(os.environ.get("P2S_NATIVE_PICKER")),
         "packaged": FROZEN,
         "version": VERSION,
-        "repo": UPDATE_REPO,
+        "repo": SOURCE_REPO,
         "os": platform.platform(terse=True),
     }
 
@@ -1410,7 +1411,7 @@ def diagnostic() -> dict:
     user = read_conf().get("username")
     if user:
         text = text.replace(user, "<pseudo>")
-    return {"text": text, "issues": f"https://github.com/{UPDATE_REPO}/issues/new"}
+    return {"text": text, "issues": f"https://github.com/{SOURCE_REPO}/issues/new"}
 
 
 # --------------------------------------------------------------------------- #
