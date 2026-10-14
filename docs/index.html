@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="img/icon.png">
+<title>Playlist2Slsk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Playlist2Slsk : colle un lien de playlist, récupère des fichiers audio propres, tagués et rangés, prêts pour Traktor ou Rekordbox.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout : le « bac à disques » de l'appli. Filets noirs 2px, angles droits, titre énorme, grille de pochettes. */
+:root {
+  --bg: #ecebe6; --paper: #ffffff; --text: #111111; --muted: #66655f; --line: #111111; --hair: #cfcdc5;
+  --soft: #e1dfd8; --accent: #2f4bff; --accent-ink: #ffffff; --vinyl: #121212; --groove: #2a2a2a;
+  --display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151514; --paper: #1f1f1d; --text: #ecebe6; --muted: #9a9890; --line: #ecebe6; --hair: #34332f;
+    --soft: #262624; --accent: #7186ff; --accent-ink: #0d0d0c; --vinyl: #0a0a0a; --groove: #303030; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151514; --paper: #1f1f1d; --text: #ecebe6; --muted: #9a9890; --line: #ecebe6; --hair: #34332f;
+  --soft: #262624; --accent: #7186ff; --accent-ink: #0d0d0c; --vinyl: #0a0a0a; --groove: #303030; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+body { background: var(--bg); color: var(--text); font-family: var(--display); font-size: 17px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.mono { font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(34px, 6vw, 64px); font-weight: 900; letter-spacing: -0.035em; line-height: 1; }
+h3 { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; }
+p { margin: 0; }
+
+/* En-tête */
+header.top { border-bottom: 2px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 18px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand img { width: 36px; height: 36px; }
+.brand b { font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
+.brand .mono { color: var(--muted); }
+nav.links { display: flex; gap: 22px; flex-wrap: wrap; }
+nav.links a { font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; color: var(--muted); padding-block: 4px; border-bottom: 3px solid transparent; }
+nav.links a:hover { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Ouverture */
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; align-items: center; padding-block: 56px 64px; }
+.hero h1 { font-size: clamp(54px, 10.5vw, 132px); font-weight: 900; letter-spacing: -0.05em; line-height: .88; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { margin-top: 26px; font-size: 20px; max-width: 34em; }
+.flow { margin-top: 18px; color: var(--muted); }
+.cta { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { display: inline-flex; flex-direction: column; justify-content: center; min-height: 56px; padding: 10px 20px; border: 2px solid var(--line); background: var(--paper); color: var(--text); text-decoration: none; font-weight: 800; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; line-height: 1.15; transition: transform .15s, box-shadow .15s; }
+.btn small { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--muted); letter-spacing: .05em; margin-top: 3px; }
+.btn.primary { background: var(--text); color: var(--bg); }
+.btn.primary small { color: var(--hair); }
+.btn:hover { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 var(--accent); }
+.soon { margin-top: 12px; font-size: 14px; color: var(--muted); }
+
+/* La pochette et le disque */
+.record { position: relative; width: 100%; max-width: 440px; aspect-ratio: 1.45 / 1; justify-self: end; }
+.disc { position: absolute; top: 4%; right: 0; height: 92%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0 16%, var(--vinyl) 16.5% 100%);
+  animation: slide 1.1s cubic-bezier(.2,.8,.2,1) .3s both; }
+.disc::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 5px, var(--groove) 5px 6px); mask: radial-gradient(circle, transparent 0 22%, #000 23% 96%, transparent 97%); -webkit-mask: radial-gradient(circle, transparent 0 22%, #000 23% 96%, transparent 97%); }
+.disc::after { content: ""; position: absolute; left: 50%; top: 50%; width: 3%; aspect-ratio: 1; border-radius: 50%; background: var(--bg); transform: translate(-50%, -50%); }
+.sleeve { position: absolute; left: 0; top: 0; height: 100%; aspect-ratio: 1; background: var(--accent); border: 3px solid var(--vinyl); display: grid; place-items: center; z-index: 1; }
+.sleeve svg { width: 52%; height: 52%; }
+.record:hover .disc { transform: translateX(6%) rotate(40deg); transition: transform .6s; }
+@keyframes slide { from { transform: translateX(-55%) rotate(-120deg); } to { transform: none; } }
+
+/* Bandes de section */
+section.band { border-top: 2px solid var(--line); }
+section.band > .wrap { padding-block: 64px; }
+.sec-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; flex-wrap: wrap; margin-bottom: 36px; }
+.sec-head p { max-width: 30em; color: var(--muted); }
+
+/* Sources */
+.sources { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+.src { border: 2px solid var(--line); background: var(--paper); padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 150px; }
+.src i { width: 40px; height: 40px; display: grid; place-items: center; color: #fff; font-style: normal; }
+.src i svg { width: 20px; height: 20px; }
+.src b { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+.src .mono { color: var(--muted); font-size: 11px; margin-top: auto; }
+
+/* Étapes */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 2px solid var(--line); }
+.step { padding: 22px; border-right: 2px solid var(--line); background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.step:last-child { border-right: 0; }
+.step .n { font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: -0.04em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.step p { color: var(--muted); font-size: 15.5px; }
+
+/* Fonctions : bac à disques */
+.crate { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.feat { display: flex; flex-direction: column; gap: 10px; }
+.cover { aspect-ratio: 1; background: var(--soft); border: 2px solid var(--line); position: relative; display: grid; place-items: center; overflow: hidden; }
+.cover .big { font-size: clamp(30px, 4vw, 46px); font-weight: 900; letter-spacing: -0.04em; line-height: .95; padding: 14px; text-align: center; }
+.cover .cat { position: absolute; left: 0; bottom: 0; background: var(--text); color: var(--bg); padding: 3px 7px; font-family: var(--mono); font-size: 11px; letter-spacing: .05em; }
+.cover.blue { background: var(--accent); color: var(--accent-ink); }
+.cover.ink { background: var(--text); color: var(--bg); }
+.cover.ink .cat { background: var(--accent); color: var(--accent-ink); }
+.feat p { color: var(--muted); font-size: 15px; }
+
+/* Captures */
+.shots { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.shots .col { display: grid; gap: 22px; }
+figure { margin: 0; }
+figure img { display: block; width: 100%; height: auto; border: 2px solid var(--line); background: var(--paper); }
+figcaption { margin-top: 10px; color: var(--muted); font-size: 14.5px; }
+figcaption b { color: var(--text); }
+
+/* Installer */
+.install { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.os { border: 2px solid var(--line); background: var(--paper); padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+.os h3 { font-size: 28px; font-weight: 900; }
+.os ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.os li::marker { font-family: var(--mono); color: var(--accent); }
+.os .q { font-weight: 700; }
+.note { margin-top: 22px; border: 2px dashed var(--line); padding: 18px 22px; max-width: 760px; }
+
+/* Bon à savoir */
+.faq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.faq h3 { margin-bottom: 8px; }
+.faq p { color: var(--muted); font-size: 15.5px; }
+
+/* Crédits */
+.credits { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 40px; align-items: start; }
+.powered { font-size: clamp(48px, 9vw, 104px); font-weight: 900; letter-spacing: -0.05em; line-height: .85; }
+.powered small { display: block; font-family: var(--mono); font-size: 13px; font-weight: 400; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
+.liner { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--line); }
+.liner li { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 16px; padding-block: 12px; border-bottom: 1px solid var(--hair); }
+.liner li > span:first-child { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.liner a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.liner a:hover { color: var(--accent); }
+
+footer.end { border-top: 2px solid var(--line); }
+footer.end .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-block: 22px 34px; color: var(--muted); }
+footer.end b { color: var(--text); }
+
+@media (max-width: 920px) {
+  .hero .wrap { grid-template-columns: 1fr; padding-block: 40px 48px; }
+  .record { justify-self: start; max-width: 380px; }
+  .sources { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step:nth-child(2) { border-right: 0; }
+  .step:nth-child(-n+2) { border-bottom: 2px solid var(--line); }
+  .crate { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shots, .install, .credits { grid-template-columns: 1fr; }
+  .faq { grid-template-columns: 1fr; gap: 22px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  .brand .mono { display: none; }
+  .sources { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps { grid-template-columns: 1fr; }
+  .step { border-right: 0; border-bottom: 2px solid var(--line); }
+  .step:last-child { border-bottom: 0; }
+  .liner li { grid-template-columns: 1fr; gap: 2px; }
+  section.band > .wrap { padding-block: 48px; }
+}
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Playlist2Slsk, haut de page">
+      <img src="img/icon.png" alt="">
+      <b>PLAYLIST2SLSK</b>
+      <span class="mono">Playlist → Soulseek → fichiers rangés</span>
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a href="#fonctions">Fonctions</a>
+      <a href="#installer">Installer</a>
+      <a href="#credits">Crédits</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>Ta playlist,<br>en <em>vrais</em> fichiers.</h1>
+        <p class="lede">Colle le lien d'une playlist. Playlist2Slsk cherche chaque morceau sur Soulseek, le télécharge en FLAC ou en MP3, le renomme, le tague, ajoute la pochette et range le tout, prêt à mixer.</p>
+        <p class="flow mono">Spotify · Deezer · YouTube · SoundCloud · Bandcamp · CSV</p>
+        <div class="cta" id="telecharger">
+          <a class="btn primary" data-dl="mac_arm" href="#installer">Mac Apple Silicon<small>.dmg · M1, M2, M3, M4</small></a>
+          <a class="btn" data-dl="mac_intel" href="#installer">Mac Intel<small>.dmg</small></a>
+          <a class="btn" data-dl="windows" href="#installer">Windows<small>setup.exe · 10 et 11</small></a>
+        </div>
+        <p class="soon">Gratuit. Tout tourne sur ton ordinateur, rien n'est envoyé ailleurs.</p>
+      </div>
+      <div class="record" aria-hidden="true">
+        <div class="disc"></div>
+        <div class="sleeve">
+          <svg viewBox="0 0 100 100" fill="none"><path d="M50 10v52" stroke="#fff" stroke-width="9"/><path d="M24 44l26 28 26-28z" fill="#fff"/><path d="M22 86h56" stroke="#fff" stroke-width="9"/></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="h-sources">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-sources">D'où vient ta playlist ?</h2>
+        <p>Six portes d'entrée. Pas besoin de compte Spotify ou Deezer : un lien public suffit.</p>
+      </div>
+      <div class="sources">
+        <div class="src"><i style="background:#1db954"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9.5c4-1.3 8.5-1 12 1"/><path d="M7 13c3.3-1 6.8-.7 9.6.8"/><path d="M8 16.2c2.6-.7 5.2-.5 7.3.6"/></svg></i><b>Spotify</b><span class="mono">Lien public ou Exportify</span></div>
+        <div class="src"><i style="background:#a238ff"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="15" width="3.5" height="5"/><rect x="8" y="11" width="3.5" height="9"/><rect x="13" y="7" width="3.5" height="13"/><rect x="18" y="4" width="3.5" height="16"/></svg></i><b>Deezer</b><span class="mono">Playlist publique</span></div>
+        <div class="src"><i style="background:#ff0033"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l12-7z"/></svg></i><b>YouTube</b><span class="mono">Playlist ou vidéo</span></div>
+        <div class="src"><i style="background:#ff5500"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9v9H8.5v-7.5zM7 11v7H5.5v-6zM4 13v5H2.5v-4.5zM12 7.5c.8-.4 1.7-.5 2.6-.5 3 0 5.4 2.1 5.8 4.9A3 3 0 0 1 20 18h-8z"/></svg></i><b>SoundCloud</b><span class="mono">Playlist ou set</span></div>
+        <div class="src"><i style="background:#1da0c3"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 6h14l-6 12H2z"/></svg></i><b>Bandcamp</b><span class="mono">Wishlist, collection, album</span></div>
+        <div class="src"><i style="background:#111"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h8l4 4v14H6z"/><path d="M9 12h6M9 16h6"/></svg></i><b>Fichier CSV</b><span class="mono">Exportify, TuneMyMusic…</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="h-steps">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-steps">Quatre gestes.</h2>
+        <p>Du lien collé au dossier rangé, sans ligne de commande.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><h3>Colle le lien</h3><p>Ou dépose un CSV. La liste des morceaux s'affiche avec pochettes et durées.</p></div>
+        <div class="step"><span class="n">2</span><h3>Choisis la qualité</h3><p>FLAC si possible, FLAC seul, MP3, ou peu importe. Et le dossier de destination.</p></div>
+        <div class="step"><span class="n">3</span><h3>Télécharge</h3><p>Chaque morceau passe au vert ou au rouge en direct. Un clic relance les manquants en recherche élargie.</p></div>
+        <div class="step"><span class="n">4</span><h3>Mixe</h3><p>Fichiers nommés « Artiste - Titre », tagués, avec pochette, plus une playlist .m3u8 dans l'ordre.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="fonctions" aria-labelledby="h-feat">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-feat">Dans le bac.</h2>
+        <p>Pensé par un DJ pour préparer ses sets : ce qui sort de l'appli va directement dans le logiciel de mix.</p>
+      </div>
+      <div class="crate">
+        <div class="feat"><div class="cover blue"><span class="big">Artiste<br>- Titre</span><span class="cat">P2S-01</span></div><h3>Noms propres</h3><p>Fini les « track01_final_FINAL.mp3 ». Le nom vient de la playlist, pas du fichier partagé.</p></div>
+        <div class="feat"><div class="cover"><span class="big">Tags +<br>pochette</span><span class="cat">P2S-02</span></div><h3>Métadonnées réécrites</h3><p>Titre, artiste, album, année et pochette en 640 px intégrés au fichier, en MP3, FLAC, M4A, OGG ou AIFF.</p></div>
+        <div class="feat"><div class="cover ink"><span class="big">16,9<br>kHz</span><span class="cat">P2S-03</span></div><h3>Faux FLAC repérés</h3><p>Le spectre de chaque FLAC est analysé. Un MP3 déguisé est signalé et remplacé en un clic.</p></div>
+        <div class="feat"><div class="cover"><span class="big">.nml<br>.xml</span><span class="cat">P2S-04</span></div><h3>Traktor et Rekordbox</h3><p>Une playlist Traktor par téléchargement, et un rekordbox.xml tenu à jour. Bouton « → Rekordbox » inclus.</p></div>
+        <div class="feat"><div class="cover"><span class="big">+3</span><span class="cat">P2S-05</span></div><h3>Playlists suivies</h3><p>Suis une playlist : à la mise à jour, seuls les nouveaux morceaux sont téléchargés.</p></div>
+        <div class="feat"><div class="cover ink"><span class="big">▶</span><span class="cat">P2S-06</span></div><h3>Lecteur intégré</h3><p>Écoute ce qui vient d'arriver sans quitter l'appli, avant de l'envoyer dans ta bibliothèque.</p></div>
+        <div class="feat"><div class="cover"><span class="big">4/8</span><span class="cat">P2S-07</span></div><h3>Introuvables corrigés</h3><p>Clique sur un morceau en rouge, retouche l'artiste ou le titre, relance. La correction est retenue.</p></div>
+        <div class="feat"><div class="cover blue"><span class="big">×2</span><span class="cat">P2S-08</span></div><h3>Pas de doublons</h3><p>Indique tes dossiers de musique : ce que tu as déjà n'est pas retéléchargé.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="h-shots">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-shots">En vrai.</h2>
+        <p>Captures de l'appli. Le thème sombre suit celui de ton ordinateur.</p>
+      </div>
+      <div class="shots">
+        <figure>
+          <img src="img/lecteur.jpg" alt="Bilan d'une playlist de 8 morceaux : 4 trouvés en FLAC ou MP3 320, 4 introuvables expliqués, lecteur en bas de l'écran" loading="lazy" width="1100" height="1298">
+          <figcaption><b>Le bilan.</b> Ce qui est arrivé, en quel format, et pourquoi le reste manque.</figcaption>
+        </figure>
+        <div class="col">
+          <figure>
+            <img src="img/source.jpg" alt="Une wishlist Bandcamp chargée : trois morceaux, choix du format et du dossier de destination" loading="lazy" width="1100" height="764">
+            <figcaption><b>Avant de lancer.</b> La liste, le format, le dossier.</figcaption>
+          </figure>
+          <figure>
+            <img src="img/mosaique.jpg" alt="Onglet Mes playlists : pochettes des playlists déjà scannées, dont une suivie avec trois nouveaux morceaux" loading="lazy" width="1100" height="560">
+            <figcaption><b>Mes playlists.</b> Celles que tu suis affichent les nouveaux ajouts.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="installer" aria-labelledby="h-install">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-install">Installer.</h2>
+        <p>Tout est inclus : rien d'autre à installer. L'appli n'est pas signée par Apple ou Microsoft, d'où une étape de plus au premier lancement.</p>
+      </div>
+      <div class="install">
+        <div class="os">
+          <h3>Mac</h3>
+          <p class="mono">Apple Silicon (M1 et suivants) ou Intel</p>
+          <ol>
+            <li>Ouvre le .dmg et glisse Playlist2Slsk dans Applications.</li>
+            <li>Lance-la une fois. macOS affiche « Apple ne peut pas vérifier… » : clique sur Terminé.</li>
+            <li>Va dans <span class="q">Réglages Système › Confidentialité et sécurité</span>, puis <span class="q">« Ouvrir quand même »</span>.</li>
+            <li>Si macOS demande l'accès à Musique ou Téléchargements, autorise : c'est là que l'appli range tes morceaux.</li>
+          </ol>
+        </div>
+        <div class="os">
+          <h3>Windows</h3>
+          <p class="mono">Windows 10 et 11</p>
+          <ol>
+            <li>Lance Playlist2Slsk-Windows-Setup.exe.</li>
+            <li>À l'écran bleu « Windows a protégé votre ordinateur », clique sur <span class="q">« Informations complémentaires »</span>.</li>
+            <li>Puis <span class="q">« Exécuter quand même »</span> et suis l'installation.</li>
+            <li>L'appli est dans le menu Démarrer, avec son Lisez-moi.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="note">
+        <h3>Au premier lancement : ton compte Soulseek</h3>
+        <p style="margin-top:6px">Pas de compte ? Invente un identifiant et un mot de passe, Soulseek le crée tout seul. Note-les bien. Si tu utilises déjà Soulseek ailleurs (Nicotine+…), prends un compte à part.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="h-faq">
+    <div class="wrap">
+      <div class="sec-head"><h2 id="h-faq">Bon à savoir.</h2></div>
+      <div class="faq">
+        <div><h3>Soulseek, c'est quoi ?</h3><p>Un réseau de partage de musique né en 2000, très riche en sons rares, pressages vinyle et FLAC. Les fichiers viennent des autres utilisateurs.</p></div>
+        <div><h3>Joue le jeu du réseau</h3><p>Playlist2Slsk télécharge mais ne partage pas. Pour rendre la pareille, partage ta collection avec un vrai client comme Nicotine+.</p></div>
+        <div><h3>Et côté légal ?</h3><p>Télécharger de la musique protégée que tu n'as pas achetée reste de la contrefaçon en France. Le bouton Bandcamp mène à la page de l'artiste pour l'acheter.</p></div>
+      </div>
+      <div class="note">
+        <h3>Soutiens les artistes</h3>
+        <p style="margin-top:6px">Playlist2Slsk est un outil pour organiser ta propre musique : des morceaux que tu possèdes ou que tu as le droit de télécharger. Si un titre tourne dans tes sets, achète-le, sur Bandcamp ou ailleurs. Playlist2Slsk est un projet indépendant, sans lien avec Spotify, Deezer, YouTube, SoundCloud, Bandcamp, Soulseek, Native Instruments (Traktor) ou AlphaTheta (Rekordbox) ; ces noms ne servent qu'à indiquer la compatibilité.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="credits" aria-labelledby="h-credits">
+    <div class="wrap credits">
+      <div>
+        <p class="powered" id="h-credits"><small>Crédits</small>Powered<br>by Lutin.</p>
+      </div>
+      <ul class="liner">
+        <li><span>Idée, tests, sets</span><span>Lutin</span></li>
+        <li><span>Moteur Soulseek</span><span><a href="https://github.com/fiso64/sockseek" rel="noopener">sockseek</a> par fiso64 (anciennement slsk-batchdl), inclus dans l'appli sous licence AGPL-3.0. Code source : <a href="https://github.com/fiso64/sockseek" rel="noopener">github.com/fiso64/sockseek</a></span></li>
+        <li><span>Réseau</span><span><a href="https://www.slsknet.org" rel="noopener">Soulseek</a> et tous ceux qui partagent</span></li>
+        <li><span>YouTube, SoundCloud</span><span><a href="https://github.com/yt-dlp/yt-dlp" rel="noopener">yt-dlp</a></span></li>
+        <li><span>Tags et pochettes</span><span><a href="https://github.com/quodlibet/mutagen" rel="noopener">mutagen</a>, pochettes Spotify et iTunes</span></li>
+        <li><span>Analyse des FLAC</span><span>NumPy, soundfile</span></li>
+        <li><span>Appli de bureau</span><span>pywebview, PyInstaller, Inno Setup</span></li>
+        <li><span>Export Spotify</span><span><a href="https://exportify.app" rel="noopener">Exportify</a></span></li>
+        <li><span>Typographie</span><span>Archivo, IBM Plex Mono</span></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="end">
+  <div class="wrap">
+    <span class="mono">Playlist2Slsk</span>
+    <span class="mono">Powered by <b>Lutin</b></span>
+  </div>
+</footer>
+
+<script>
+/* Liens de téléchargement : à remplir quand les installateurs auront une adresse publique (Release GitHub). Vide = le bouton mène à la section Installer. */
+const TELECHARGEMENTS = {   // dernière version publiée dans les Releases du dépôt
+  mac_arm: "https://github.com/gangstamood/playlist2slsk/releases/latest/download/Playlist2Slsk-Mac-AppleSilicon.dmg",
+  mac_intel: "https://github.com/gangstamood/playlist2slsk/releases/latest/download/Playlist2Slsk-Mac-Intel.dmg",
+  windows: "https://github.com/gangstamood/playlist2slsk/releases/latest/download/Playlist2Slsk-Windows-Setup.exe"
+};
+document.querySelectorAll("[data-dl]").forEach(function (a) {
+  var url = TELECHARGEMENTS[a.dataset.dl];
+  if (url) a.href = url;
+});
+</script>
+
+</body>
+</html>
