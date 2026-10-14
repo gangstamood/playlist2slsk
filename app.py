@@ -62,6 +62,7 @@ DEFAULTS = {
     "check_lossless": True,         # repérer les MP3 réencodés en FLAC
     "export_traktor": False,        # <playlist>.nml à importer dans Traktor
     "export_rekordbox": False,      # playlist ajoutée à <dossier racine>/rekordbox.xml
+    "stale_s": 15,                  # secondes sans recevoir d'octet avant de changer de source (sockseek : 30)
     "rekordbox_ready": False,       # le mode d'emploi Rekordbox a déjà été montré une fois
     "pattern": "{artist} - {title}",
     "match": "normal",              # normal | strict | wide
@@ -329,6 +330,7 @@ class State:
         self.stopped = False
         self.started = 0.0
         self.exports: dict[str, str] = {}   # traktor|rekordbox → fichier écrit
+        self.jobs: dict[str, int] = {}      # jobId sockseek → position (download_progress ne donne que le jobId)
 
 
 S = State()
@@ -742,6 +744,9 @@ def sockseek_args(s: dict) -> list[str]:
     a += MATCH_ARGS.get(s["match"], [])
     if s["fast_search"]:
         a.append("--fast-search")
+    stale = int(s.get("stale_s") or 0)
+    if stale > 0:                       # source muette : on passe plus vite à une autre
+        a += ["--max-stale-time", str(stale * 1000)]
     if s["remove_ft"]:
         a.append("--remove-ft")
     banned = ",".join(u.strip() for u in s["banned_users"].replace("\n", ",").split(",") if u.strip())
@@ -825,7 +830,14 @@ def _sample(ev: dict) -> None:
 def _on_event(ev: dict) -> None:
     _sample(ev)
     kind, data = ev.get("type"), ev.get("data") or {}
-    pos = _find_pos(data)
+    pos = _find_pos(data) if data.get("artist") or data.get("downloadPath") else S.jobs.get(str(data.get("jobId")))
+    if pos is None and kind == "download_progress":
+        # 1er message d'un transfert : on le rattache au morceau dont le fichier a exactement cette taille
+        size = _num(data, "totalBytes")
+        cands = [p for p, d in S.details.items() if S.status.get(p) == "dl" and size and d.get("size") == size]
+        if len(cands) == 1:
+            pos = cands[0]
+            S.jobs[str(data.get("jobId"))] = pos
     if pos is None:
         return
     d = S.details.setdefault(pos, {})
@@ -835,7 +847,13 @@ def _on_event(ev: dict) -> None:
     elif kind == "download_start":
         if S.status.get(pos) in ("queued", "search"):
             S.status[pos] = "dl"
-        d.update(user=data.get("username"), ext=data.get("extension"), size=data.get("size"))
+        if d.get("user") and d.get("user") != data.get("username"):
+            d["tries"] = d.get("tries", 1) + 1        # la source précédente a lâché : sockseek en essaie une autre
+        d.update(user=data.get("username"), ext=data.get("extension"), size=data.get("size"),
+                 got=0, started=time.time(), moved=time.time())
+    elif kind == "track_state" and data.get("terminalOutcome") in (None, "None"):
+        if data.get("activityPhase") not in (None, "None"):
+            d["phase"] = data["activityPhase"]
     elif kind == "download_progress":
         if S.status.get(pos) in ("queued", "search"):
             S.status[pos] = "dl"
@@ -843,6 +861,8 @@ def _on_event(ev: dict) -> None:
         size = _num(data, "totalBytes", "size", "fileSize", "total")
         pct = _num(data, "percent", "percentage", "progress", "progressPercent", "progressPercentage")
         if got is not None:
+            if got > d.get("got", 0):
+                d["moved"] = time.time()      # dernier octet reçu : sert à repérer une source bloquée
             d["got"] = max(got, d.get("got", 0))
         if size:
             d["size"] = size
@@ -937,6 +957,8 @@ def _watch_staging(parent: Path) -> None:
                             if S.status.get(pos) in ("queued", "search"):
                                 S.status[pos] = "dl"
                             det = S.details.setdefault(pos, {})
+                            if size > det.get("got", 0):
+                                det["moved"] = time.time()
                             det["got"] = max(size, det.get("got", 0))
         except OSError:
             pass
@@ -1008,7 +1030,7 @@ def job_status(since: int) -> dict:
             "lines": S.lines[since:], "next": len(S.lines), "exports": S.exports,
             "load_id": S.load_id, "job_id": S.job_id, "name": S.name,
             "sync": {k: SYNC[k] for k in ("active", "index", "total", "current", "added")},
-            "status": S.status, "counts": counts, "details": S.details, "progress": job_progress(),
+            "status": S.status, "counts": counts, "details": S.details, "progress": job_progress(), "now": time.time(),
             "missing_csv": str(missing) if missing and missing.exists() and not S.running else "",
         }
 

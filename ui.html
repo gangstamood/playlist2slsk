@@ -580,6 +580,15 @@ body.has-player main { padding-bottom: 130px; }
           </div>
           <p class="hint">Stricte si de mauvais morceaux arrivent, élargie pour retrouver les introuvables (plus lente).</p>
         </div>
+        <div>
+          <label class="lbl">Source qui ne répond plus</label>
+          <div class="seg" data-key="stale_s">
+            <button data-v="10">Changer après 10 s</button>
+            <button data-v="15">Après 15 s</button>
+            <button data-v="30">Après 30 s</button>
+          </div>
+          <p class="hint">Si un utilisateur n'envoie plus rien, on abandonne son fichier et on en prend un autre. Plus court = moins de blocages, mais une connexion lente peut être lâchée trop tôt.</p>
+        </div>
         <label class="check"><input type="checkbox" data-key="fast_search"> Recherche rapide</label>
         <p class="hint">Télécharge dès qu'un bon fichier apparaît, sans attendre la fin de la recherche.</p>
         <label class="check"><input type="checkbox" data-key="remove_ft"> Ignorer les « feat. » dans les titres</label>
@@ -784,7 +793,7 @@ $$(".seg[data-key]").forEach(seg => seg.addEventListener("click", e => {
   const k = seg.dataset.key;
   setSetting(k, typeof DEFAULT_TYPES[k] === "number" ? +b.dataset.v : b.dataset.v);
 }));
-const DEFAULT_TYPES = { min_bitrate: 0 };
+const DEFAULT_TYPES = { min_bitrate: 0, stale_s: 0 };
 $$("input[data-key], select[data-key], textarea[data-key]").forEach(c => c.addEventListener(c.type === "checkbox" || c.tagName === "SELECT" ? "change" : "input",
   () => setSetting(c.dataset.key, c.type === "checkbox" ? c.checked : c.value.trim())));
 
@@ -1219,6 +1228,16 @@ function qualityText(q) {
 const mo = b => b >= 1e9 ? (b / 1e9).toFixed(1).replace(".", ",") + " Go" : Math.round(b / 1e6) + " Mo";
 let details = {};
 
+let srvNow = 0;
+function dlText(d) {
+  // où en est le transfert : %, attente chez l'autre utilisateur, ou changement de source
+  const pct = d.size ? Math.min(100, Math.floor((d.got || 0) / d.size * 100)) : null;
+  const idle = srvNow && d.moved ? srvNow - d.moved : 0;
+  const retry = d.tries > 1 ? ` · ${d.tries}e source` : "";
+  if (!d.got && idle > 6) return `en attente de ${d.user || "l'utilisateur"}${retry}…`;
+  if (d.got && idle > 8) return `${pct}% · ${d.user || "la source"} ne répond plus, on va essayer ailleurs${retry}…`;
+  return (pct !== null && d.got ? `${pct}% ` : "téléchargement ") + (d.user ? `depuis ${d.user}` : "") + retry;
+}
 function renderList(status) {
   lastStatusMap = status;
   const lim = +$("#limit").value || 0, box = $("#tracks");
@@ -1237,7 +1256,7 @@ function renderList(status) {
     let sub = el("span", {}, [t.artist, t.album].filter(Boolean).join(" · "));
     if (st === "miss" || st === "stopped") sub = el("span", { class: "err" }, `${t.artist} · ${REASONS[reasonKey(st, d)][0]}`);
     else if (st === "search") sub = el("span", { class: "live" }, `${t.artist} · recherche…`);
-    else if (st === "dl") sub = el("span", { class: "live" }, `${t.artist} · téléchargement${d.user ? " depuis " + d.user : ""}…`);
+    else if (st === "dl") sub = el("span", { class: "live" }, `${t.artist} · ${dlText(d)}`);
     else if (st === "lib") sub = el("span", { title: d.path || "" }, `${t.artist} · déjà dans ta bibliothèque`);
     else if (st === "skip") sub = el("span", {}, `${t.artist} · déjà téléchargé`);
     const label = st === "ok" || st === "dl" ? fmtLabel(d) : "";
@@ -1352,8 +1371,8 @@ async function poll() {
     if (atBottom) log.scrollTop = log.scrollHeight;
     $("#last").textContent = s.lines[s.lines.length - 1];
   }
-  details = s.details || {};
-  const key = JSON.stringify([s.status, details]);
+  details = s.details || {}; srvNow = s.now || 0;
+  const key = JSON.stringify([s.status, details, Math.floor(srvNow / 3)]);
   if (key !== lastStatus) { lastStatus = key; renderList(s.status); }
   const c = s.counts, done = (c.ok || 0) + (c.miss || 0);
   const pr = s.progress || {}, posting = done > 0;
