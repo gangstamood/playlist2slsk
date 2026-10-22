@@ -375,6 +375,8 @@ body.has-player main { padding-bottom: 130px; }
 .dg-state .spin { display: inline-block; margin: 0; border-color: var(--hair); border-top-color: var(--accent); }
 .dg-tag { font: 500 10.5px var(--mono); text-transform: uppercase; padding: 2px 6px; background: var(--text); color: var(--bg); white-space: nowrap; }
 .dg-tag.ok { background: var(--accent); color: var(--accent-ink); }
+.dg-tag.warn { background: var(--warn-soft); color: var(--warn); }
+#bcm .dg-r a { color: #1da0c3; }
 .dg-row.off .dg-m { opacity: .45; }
 .dg-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; }
 @media (max-width: 700px) { .dg-row { grid-template-columns: 22px minmax(0, 1fr); } .dg-row .dg-m { grid-column: 2; } }
@@ -473,6 +475,7 @@ body.has-player main { padding-bottom: 130px; }
         <div class="pl-acts">
           <button id="pl-listen" class="primary hidden" type="button">▶ Écouter</button>
           <button id="to-dg" class="follow-btn" type="button" title="Retrouver les disques de cette playlist sur Discogs et les ajouter à ta wantlist">→ Discogs</button>
+          <button id="to-bc" class="follow-btn" type="button" title="Retrouver les morceaux de cette playlist sur Bandcamp pour les acheter">→ Bandcamp</button>
           <button id="to-rb" class="follow-btn hidden" type="button" title="Ajouter cette playlist à Rekordbox (morceaux déjà téléchargés)">→ Rekordbox</button>
           <button id="follow" class="follow-btn hidden" title="Retrouver cette playlist dans l'onglet Playlists et la mettre à jour en un clic">+ Suivre</button>
           <button id="change" class="link">Changer</button>
@@ -758,6 +761,15 @@ body.has-player main { padding-bottom: 130px; }
     <div class="dg-prog"><div id="dg-bar" class="bar thin"><i></i></div><span class="pb-val" id="dg-val"></span></div>
     <div id="dg-list" class="dg-list"></div>
     <div class="acts"><button id="dg-add" class="primary" type="button" disabled>Ajouter à ma wantlist</button><button id="dg-close2" class="link" type="button">Fermer</button></div>
+  </div>
+</div>
+<div id="bcm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bcm-name">
+  <div class="modal-box dg-box">
+    <div class="dg-top"><span class="kicker">Bandcamp · acheter, soutenir les artistes</span></div>
+    <h2 id="bcm-name"></h2>
+    <div class="dg-prog"><div id="bcm-bar" class="bar thin"><i></i></div><span class="pb-val" id="bcm-val"></span></div>
+    <div id="bcm-list" class="dg-list"></div>
+    <div class="acts"><button id="bcm-open" class="primary" type="button" disabled>Ouvrir les pages</button><button id="bcm-close" class="link" type="button">Fermer</button></div>
   </div>
 </div>
 <div id="rbm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rbm-title">
@@ -1855,6 +1867,86 @@ $("#dg-add").onclick = async () => {
 for (const id of ["#dg-close1", "#dg-close2"]) $(id).onclick = dgClose;
 $("#dg").onclick = e => { if (e.target.id === "dg") dgClose(); };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#dg").classList.contains("hidden")) dgClose(); });
+
+// ---------- Bandcamp : retrouver les pages des morceaux pour les acheter ----------
+const bcf = { timer: null, rows: {}, raw: {}, on: {}, opened: new Set() };
+async function bcOpen() {
+  if (!tracks.length) return;
+  const s = await api("/api/bandcamp");
+  if (s.load_id !== loadId) {
+    bcf.rows = {}; bcf.raw = {}; bcf.on = {}; bcf.opened = new Set(); $("#bcm-list").innerHTML = "";
+    const r = await api("/api/bandcamp/match", {});
+    if (r.error) return toast(r.error);
+  }
+  $("#bcm-name").textContent = plName;
+  $("#bcm").classList.remove("hidden"); bcPoll();
+}
+function bcClose() { $("#bcm").classList.add("hidden"); clearTimeout(bcf.timer); }
+async function bcPoll() {
+  clearTimeout(bcf.timer);
+  const s = await api("/api/bandcamp");
+  if (s.load_id === loadId) bcRender(s);
+  if (s.running && !$("#bcm").classList.contains("hidden")) bcf.timer = setTimeout(bcPoll, 1200);
+}
+function bcRender(s) {
+  $("#bcm-bar i").style.width = (s.total ? Math.round(100 * s.done / s.total) : 0) + "%";
+  const found = Object.values(s.items).filter(i => i.state === "sure" || i.state === "maybe").length;
+  $("#bcm-val").textContent = s.running ? `${s.done} / ${s.total} cherchés` : `${found} trouvés sur ${s.total}`;
+  for (const t of tracks) {
+    const it = s.items[t.n] || { state: "wait" }, key = JSON.stringify(it);
+    if (bcf.raw[t.n] === key && bcf.rows[t.n]) continue;
+    bcf.raw[t.n] = key;
+    if (!(t.n in bcf.on) && (it.state === "sure" || it.state === "maybe")) bcf.on[t.n] = it.state === "sure";
+    const row = bcRow(t, it);
+    if (bcf.rows[t.n]) bcf.rows[t.n].replaceWith(row); else $("#bcm-list").append(row);
+    bcf.rows[t.n] = row;
+  }
+  bcCount();
+}
+function bcRow(t, it) {
+  const row = el("div", { class: "dg-row" });
+  const box = el("input", { type: "checkbox", "aria-label": "Ouvrir " + t.title });
+  const head = el("div", { class: "dg-t" }, el("b", {}, t.title), el("small", {}, t.artist));
+  const r = (it.results || [])[0];
+  if (!r) {
+    box.disabled = true; row.classList.add("off");
+    const st = el("div", { class: "dg-state" });
+    if (it.state === "search") st.append(el("span", { class: "spin" }), "Recherche…");
+    else if (it.state === "none") st.append("Pas trouvé", el("a", { href: it.search, class: "link" }, "Chercher"));
+    else st.append("En attente");
+    row.append(box, head, st);
+    return row;
+  }
+  box.checked = !!bcf.on[t.n];
+  box.onchange = () => { bcf.on[t.n] = box.checked; row.classList.toggle("off", !box.checked); bcCount(); };
+  const img = r.cover ? el("img", { src: r.cover, alt: "", loading: "lazy" }) : el("div", { class: "ph" });
+  const line2 = el("div", { class: "row2" }, el("a", { href: r.url }, "Ouvrir"));
+  if (it.state === "maybe") line2.append(el("span", { class: "dg-tag warn" }, "À vérifier"));
+  if (bcf.opened.has(t.n)) line2.append(el("span", { class: "dg-tag ok" }, "Ouvert"));
+  const rel = el("div", { class: "dg-r" }, el("b", {}, (r.artist ? r.artist + " – " : "") + r.title), el("small", {}, r.album || "Bandcamp"), line2);
+  row.append(box, head, el("div", { class: "dg-m" }, img, rel));
+  row.classList.toggle("off", !box.checked);
+  return row;
+}
+function bcChosen() {
+  return Object.keys(bcf.on).filter(n => bcf.on[n]).map(n => [n, (JSON.parse(bcf.raw[n] || "{}").results || [])[0]]).filter(x => x[1]);
+}
+function bcCount() {
+  const n = bcChosen().length, b = $("#bcm-open");
+  b.disabled = !n;
+  b.textContent = n ? `Ouvrir ${n} page${n > 1 ? "s" : ""} Bandcamp` : "Ouvrir les pages";
+}
+$("#to-bc").onclick = bcOpen;
+$("#bcm-open").onclick = async () => {
+  const list = bcChosen();
+  for (const [n, r] of list) { await openExt(r.url); bcf.opened.add(+n); bcf.on[n] = false; await new Promise(res => setTimeout(res, 350)); }
+  for (const [n] of list) { const t = tracks.find(x => String(x.n) === n); const nr = bcRow(t, JSON.parse(bcf.raw[n])); bcf.rows[n].replaceWith(nr); bcf.rows[n] = nr; }
+  bcCount();
+  toast("Pages ouvertes dans ton navigateur : le cœur ajoute à ta wishlist, « Acheter » pour soutenir l'artiste.");
+};
+$("#bcm-close").onclick = bcClose;
+$("#bcm").onclick = e => { if (e.target.id === "bcm") bcClose(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#bcm").classList.contains("hidden")) bcClose(); });
 
 // Appli Mac : Cmd+V, Cmd+C, Cmd+X et Cmd+A passent par le presse-papiers du système (la fenêtre native les laisse parfois tomber).
 function isField(t) {
