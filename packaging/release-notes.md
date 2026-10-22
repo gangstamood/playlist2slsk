@@ -1,9 +1,11 @@
-Correctifs de **Playlist2Slsk** 1.0.1.
+**Playlist2Slsk** 1.1.0 (version de test).
 
 ## Nouveautés
-- Les liens (Exportify, « Signaler un problème », crédits, boutons Bandcamp) s'ouvrent maintenant dans un onglet de ton navigateur, plus dans la fenêtre de l'appli.
+- **→ Discogs** : retrouve les disques d'une playlist sur Discogs (vinyle d'abord) et ajoute-les à ta wantlist en un clic. Il suffit de coller une fois ton jeton personnel Discogs.
+- **→ Bandcamp** : retrouve chaque morceau sur Bandcamp et ouvre les pages pour l'ajouter à ta wishlist ou l'acheter.
+- Appli Mac : Cmd+V, Cmd+C, Cmd+X et Cmd+A marchent dans tous les champs.
 
-Si tu as déjà la 1.0.0, installe simplement celle-ci par-dessus : tes réglages et tes playlists sont conservés.
+Si tu as déjà Playlist2Slsk, installe simplement celle-ci par-dessus : tes réglages et tes playlists sont conservés.
 
 ## Télécharger
 - **Mac Apple Silicon** (M1, M2, M3…) : `Playlist2Slsk-Mac-AppleSilicon.dmg`

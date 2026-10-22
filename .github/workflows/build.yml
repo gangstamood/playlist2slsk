@@ -12,6 +12,10 @@ on:
         description: "Publier une version (ex. v1.0.0) ; vide = simple construction"
         required: false
         default: ""
+      test:
+        description: "Version de test : publiée à part, sans toucher au site ni au bandeau de mise à jour"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -97,8 +101,10 @@ jobs:
           files: dist/Playlist2Slsk-${{ matrix.label }}.dmg
           tag_name: ${{ inputs.version || github.ref_name }}
           target_commitish: ${{ github.sha }}
-          name: Playlist2Slsk ${{ inputs.version || github.ref_name }}
+          name: Playlist2Slsk ${{ inputs.version || github.ref_name }}${{ inputs.test && ' (test)' || '' }}
           body_path: packaging/release-notes.md
+          prerelease: ${{ inputs.test == true }}
+          make_latest: ${{ inputs.test && 'false' || 'true' }}
 
   windows:
     runs-on: windows-latest
@@ -154,5 +160,7 @@ jobs:
           files: dist/Playlist2Slsk-Windows-Setup.exe
           tag_name: ${{ inputs.version || github.ref_name }}
           target_commitish: ${{ github.sha }}
-          name: Playlist2Slsk ${{ inputs.version || github.ref_name }}
+          name: Playlist2Slsk ${{ inputs.version || github.ref_name }}${{ inputs.test && ' (test)' || '' }}
           body_path: packaging/release-notes.md
+          prerelease: ${{ inputs.test == true }}
+          make_latest: ${{ inputs.test && 'false' || 'true' }}
