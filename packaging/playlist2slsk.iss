@@ -50,3 +50,11 @@ Name: "{autodesktop}\Playlist2Slsk"; Filename: "{app}\Playlist2Slsk.exe"; Tasks:
 
 [Run]
 Filename: "{app}\Playlist2Slsk.exe"; Description: "{cm:LaunchProgram,Playlist2Slsk}"; Flags: nowait postinstall skipifsilent
+; Mise à jour lancée depuis l'appli (installation silencieuse) : on la rouvre à la fin.
+Filename: "{app}\Playlist2Slsk.exe"; Flags: nowait; Check: Relaunch
+
+[Code]
+function Relaunch: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
+end;

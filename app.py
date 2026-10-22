@@ -47,6 +47,7 @@ sys.path.insert(0, str(HERE))
 import playlist2slsk as p2s  # noqa: E402
 import discogs  # noqa: E402
 import bcfind  # noqa: E402
+import updater  # noqa: E402
 
 SCRIPT = HERE / "playlist2slsk.py"
 UI = HERE / "ui.html"
@@ -1414,12 +1415,30 @@ def check_update(force: bool = False) -> dict:
         if not url.startswith(f"https://github.com/{UPDATE_REPO}/"):
             url = f"https://github.com/{UPDATE_REPO}/releases/latest"
         _UPDATE.clear()
+        assets = {a.get("name"): {"name": a.get("name"), "url": a.get("browser_download_url", ""),
+                                  "size": a.get("size", 0), "digest": a.get("digest") or ""}
+                  for a in rel.get("assets") or []}
+        mine = assets.get(updater.asset_name())
+        _UPDATE.clear()
         _UPDATE.update(latest=latest, url=url, current=VERSION,
                        newer=VERSION != "dev" and _vtuple(latest) > _vtuple(VERSION),
-                       notes=(rel.get("body") or "")[:1500])
+                       notes=(rel.get("body") or "")[:1500],
+                       auto=bool(mine) and not updater.why_not(), why=updater.why_not(), asset=mine)
     except (requests.RequestException, ValueError) as e:
         return {"newer": False, "error": str(e)}
     return _UPDATE
+
+
+UPD = updater.Updater(UPDATE_REPO, APP_DIR / "maj")
+
+
+def install_update() -> dict:
+    u = _UPDATE if _UPDATE.get("newer") else check_update(force=True)
+    if not u.get("newer"):
+        return {"error": "Tu as déjà la dernière version."}
+    if S.running:
+        return {"error": "Un téléchargement est en cours : attends la fin ou arrête-le avant de mettre à jour."}
+    return UPD.start(u.get("asset") or {})
 
 
 def diagnostic() -> dict:
@@ -1510,6 +1529,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json({**DG_ACCOUNT.public(), **DG.status()})
         elif u.path == "/api/bandcamp":
             self._json(BC.status())
+        elif u.path == "/api/update/state":
+            self._json(UPD.status())
         elif u.path == "/api/busy":
             self._json({"busy": bool(S.running or SYNC["active"])})
         elif u.path == "/api/status":
@@ -1597,6 +1618,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/discogs/match": discogs_match,
             "/api/discogs/add": lambda: DG.add(body.get("ids") or []),
             "/api/bandcamp/match": bandcamp_match,
+            "/api/update/install": install_update,
         }
         fn = routes.get(urlparse(self.path).path)
         if not fn:

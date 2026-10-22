@@ -109,6 +109,7 @@ def main() -> None:
 
     window = webview.create_window("Playlist2Slsk", url, js_api=Api(), width=1240, height=880,
                                    min_size=(820, 600), background_color="#ECEBE6", text_select=True)
+    app.UPD.quit = window.destroy   # mise à jour installée : on ferme, l'installateur relance l'appli
     webview.start(private_mode=False)   # garde la connexion Spotify d'une fois sur l'autre
     app.stop_job()
     os._exit(0)

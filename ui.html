@@ -36,6 +36,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 28px 40px 80px; }
 .row-acts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .banner.upd { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); margin-bottom: 18px; }
 .banner.upd a { color: inherit; font-weight: 700; }
+.upd-acts { display: flex; gap: 16px; align-items: center; }
+.upd-go { background: var(--accent-ink); color: var(--accent); border: 0; padding: 8px 14px; font: 700 12.5px var(--display); text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+.upd-go:disabled { opacity: .6; cursor: default; }
 header { display: flex; align-items: center; gap: 24px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 2px solid var(--line); }
 .logo { display: none; }
 h1 { font-size: 22px; font-weight: 900; margin: 0; letter-spacing: -0.03em; text-transform: uppercase; }
@@ -1021,10 +1024,32 @@ function showUpdate(u) {
   const b = $("#upd-banner");
   if (!u || !u.newer) { b.classList.add("hidden"); return false; }
   b.textContent = "";
-  b.append(el("span", {}, `Nouvelle version ${u.latest} disponible (tu as la ${u.current}).`),
-    el("a", { href: u.url, target: "_blank", rel: "noopener" }, "Télécharger"));
+  const msg = el("span", {}, `Nouvelle version ${u.latest} disponible (tu as la ${u.current}).`);
+  b.append(msg);
+  if (u.auto) {
+    const go = el("button", { class: "upd-go", type: "button" }, "Mettre à jour");
+    go.onclick = () => installUpdate(msg, go);
+    b.append(el("span", { class: "upd-acts" }, go, el("a", { href: u.url }, "Nouveautés")));
+  } else {
+    b.append(el("a", { href: u.url, title: u.why || "" }, "Télécharger"));
+  }
   b.classList.remove("hidden");
   return true;
+}
+// Mise à jour depuis l'appli : téléchargement, installation, redémarrage.
+async function installUpdate(msg, go) {
+  go.disabled = true;
+  const r = await api("/api/update/install", {});
+  if (r.error) { go.disabled = false; return toast(r.error); }
+  const tick = async () => {
+    const s = await api("/api/update/state").catch(() => ({ phase: "restart" }));
+    if (s.phase === "download") msg.textContent = `Téléchargement de la mise à jour… ${s.size ? Math.round(100 * s.got / s.size) + " %" : mo(s.got)}`;
+    else if (s.phase === "install") msg.textContent = "Installation…";
+    else if (s.phase === "restart") { msg.textContent = "Playlist2Slsk redémarre…"; go.remove(); return; }
+    else if (s.phase === "error") { msg.textContent = "La mise à jour n'a pas abouti : " + s.error; go.disabled = false; go.textContent = "Réessayer"; return; }
+    setTimeout(tick, 500);
+  };
+  tick();
 }
 $("#upd-check").onclick = async () => {
   const m = $("#upd-msg"); m.textContent = "Vérification…";
