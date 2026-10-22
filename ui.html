@@ -234,6 +234,11 @@ div.cov::after { content: "♪"; display: grid; place-items: center; height: 100
 .src b { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; margin-top: 18px; }
 .src small { font: 500 11.5px var(--mono); text-transform: uppercase; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .src.on small { color: inherit; opacity: .7; }
+.buy-strip { margin-top: 26px; border: 2px dashed var(--line); padding: 20px 22px; display: grid; gap: 14px; }
+.buy-text b { display: block; font-size: 22px; font-weight: 900; letter-spacing: -0.03em; margin: 4px 0 6px; }
+.buy-text p { margin: 0; color: var(--muted); max-width: 70ch; }
+.buy-strip .row { flex-wrap: wrap; }
+.buy-strip input { flex: 1 1 260px; }
 .src-panel { margin-top: 26px; border: 2px solid var(--line); background: var(--paper); padding: 22px; }
 .src-panel .drop { background: var(--bg); padding: 40px 20px; }
 .src-panel .drop strong { font-size: 24px; }
@@ -345,7 +350,7 @@ body.has-player main { padding-bottom: 130px; }
 /* Connexion Soulseek */
 .modal { position: fixed; inset: 0; background: rgba(17,17,17,.55); display: grid; place-items: center; padding: 16px; z-index: 10; }
 .modal-box { width: 100%; max-width: 480px; background: var(--bg); border: 2px solid var(--line); padding: 28px; display: grid; gap: 16px; box-shadow: 10px 10px 0 var(--accent); }
-.modal-box .kicker { font: 500 12px var(--mono); text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
+.modal-box .kicker, .buy-text .kicker { font: 500 12px var(--mono); text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
 .modal-box h2 { margin: -8px 0 0; font-size: 40px; font-weight: 900; letter-spacing: -0.04em; line-height: 0.95; }
 .modal-box p { margin: 0; color: var(--muted); font-size: 14px; }
 .modal-box .acts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -466,6 +471,16 @@ body.has-player main { padding-bottom: 130px; }
             <input id="file" type="file" accept=".csv,.tsv,.txt,text/csv" hidden>
           </div>
           <p class="hint">Les exports de TuneMyMusic et Soundiiz marchent aussi : dépose le fichier ci-dessus.</p>
+        </div>
+      </div>
+
+      <div class="buy-strip">
+        <div class="buy-text"><span class="kicker">Du son au disque</span><b>Tu veux juste les disques ?</b>
+          <p>Colle le lien de n'importe quelle playlist : Spotify, Deezer, YouTube, SoundCloud ou Bandcamp. On retrouve les disques sur Discogs pour ta wantlist, ou les morceaux sur Bandcamp, sans rien télécharger.</p></div>
+        <div class="row">
+          <input id="buy-url" type="text" spellcheck="false" autocomplete="off" placeholder="Lien d'une playlist" aria-label="Lien d'une playlist">
+          <button id="buy-dg" class="primary" type="button">→ Discogs</button>
+          <button id="buy-bc" class="btn" type="button">→ Bandcamp</button>
         </div>
       </div>
     </section>
@@ -1962,6 +1977,22 @@ function bcCount() {
   b.textContent = n ? `Ouvrir ${n} page${n > 1 ? "s" : ""} Bandcamp` : "Ouvrir les pages";
 }
 $("#to-bc").onclick = bcOpen;
+
+// ---------- Accueil : un lien de n'importe quelle playlist, direct vers Discogs ou Bandcamp ----------
+async function buyFrom(open, btn) {
+  const url = $("#buy-url").value.trim();
+  if (!url) { $("#buy-url").focus(); return toast("Colle d'abord le lien d'une playlist."); }
+  const label = btn.textContent;
+  $("#buy-dg").disabled = $("#buy-bc").disabled = true; btn.textContent = "Lecture…";
+  const r = await api("/api/load", { url });
+  $("#buy-dg").disabled = $("#buy-bc").disabled = false; btn.textContent = label;
+  if (r.error) return toast(r.error);
+  loaded(r);
+  open();
+}
+$("#buy-dg").onclick = () => buyFrom(dgOpen, $("#buy-dg"));
+$("#buy-bc").onclick = () => buyFrom(bcOpen, $("#buy-bc"));
+$("#buy-url").onkeydown = e => { if (e.key === "Enter") $("#buy-dg").click(); };
 $("#bcm-open").onclick = async () => {
   const list = bcChosen();
   for (const [n, r] of list) { await openExt(r.url); bcf.opened.add(+n); bcf.on[n] = false; await new Promise(res => setTimeout(res, 350)); }
