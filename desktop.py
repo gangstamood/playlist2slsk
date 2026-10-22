@@ -91,6 +91,22 @@ def main() -> None:
             home = str(Path.home())
             return "~" + path[len(home):] if path.startswith(home) else path
 
+        # Presse-papiers du Mac : la fenêtre pywebview ne transmet pas toujours Cmd+V/C/X à la page,
+        # alors l'interface passe par ces deux fonctions.
+        def clip_get(self):
+            if sys.platform != "darwin":
+                return None
+            from AppKit import NSPasteboard, NSPasteboardTypeString
+            return NSPasteboard.generalPasteboard().stringForType_(NSPasteboardTypeString) or ""
+
+        def clip_set(self, text):
+            if sys.platform != "darwin":
+                return False
+            from AppKit import NSPasteboard, NSPasteboardTypeString
+            pb = NSPasteboard.generalPasteboard()
+            pb.clearContents()
+            return bool(pb.setString_forType_(str(text), NSPasteboardTypeString))
+
     window = webview.create_window("Playlist2Slsk", url, js_api=Api(), width=1240, height=880,
                                    min_size=(820, 600), background_color="#ECEBE6", text_select=True)
     webview.start(private_mode=False)   # garde la connexion Spotify d'une fois sur l'autre

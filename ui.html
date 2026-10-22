@@ -1686,6 +1686,35 @@ if ("mediaSession" in navigator) {
   navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
   navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
 }
+// Appli Mac : Cmd+V, Cmd+C, Cmd+X et Cmd+A passent par le presse-papiers du système (la fenêtre native les laisse parfois tomber).
+function isField(t) {
+  return t && t.matches && t.matches("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea") && !t.readOnly && !t.disabled;
+}
+function typeInto(t, s) {
+  t.focus();
+  if (document.execCommand && document.execCommand("insertText", false, s)) return;   // garde Cmd+Z
+  try { t.setRangeText(s, t.selectionStart, t.selectionEnd, "end"); } catch (e) { t.value = s; }
+  t.dispatchEvent(new Event("input", { bubbles: true }));
+}
+if (/Mac/i.test(navigator.platform || navigator.userAgent)) document.addEventListener("keydown", async e => {
+  const api = window.pywebview && window.pywebview.api;
+  if (!api || !api.clip_get || !e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target, k = (e.key || "").toLowerCase(), field = isField(t);
+  if (k === "v" && field) {
+    e.preventDefault();
+    const s = await api.clip_get();
+    if (s) typeInto(t, t.tagName === "TEXTAREA" ? s : s.replace(/[\r\n]+/g, " ").trim());
+  } else if (k === "c" || k === "x") {
+    let sel = "";
+    try { sel = field ? t.value.slice(t.selectionStart, t.selectionEnd) : String(getSelection()); } catch (err) { sel = ""; }
+    if (!sel) return;
+    e.preventDefault();
+    await api.clip_set(sel);
+    if (k === "x" && field) typeInto(t, "");
+  } else if (k === "a" && field) {
+    e.preventDefault(); t.select();
+  }
+}, true);
 // Barre d'espace : lecture/pause, sauf quand on tape dans un champ.
 document.addEventListener("keydown", e => {
   if (e.code !== "Space" || player.cur === null || e.target.closest("input, textarea, select, button")) return;
