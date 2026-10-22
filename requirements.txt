@@ -3,3 +3,4 @@ mutagen>=1.47
 yt-dlp
 numpy
 soundfile
+Pillow

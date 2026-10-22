@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import base64
 import csv
+import io
 import json
 import os
 import re
@@ -460,7 +461,7 @@ def _bc_json_attr(html: str, attr: str) -> dict:
 
 
 def _bc_cover(art_id) -> str:
-    return f"https://f4.bcbits.com/img/a{int(art_id):010d}_10.jpg" if art_id else ""
+    return f"https://f4.bcbits.com/img/a{int(art_id):010d}_16.jpg" if art_id else ""
 
 
 def _bc_release(url: str) -> tuple[list[Track], str]:
@@ -631,6 +632,90 @@ def _upgrade_scdn(url: str) -> str:
     return re.sub(r"ab67616d0000(1e02|4851)", "ab67616d0000b273", url)
 
 
+# Rekordbox et les CDJ n'affichent que les jaquettes JPEG de 800 × 800 au plus.
+COVER_MAX = 800
+
+
+def fit_cover(img: bytes | None) -> bytes | None:
+    """Ramène la jaquette en JPEG classique de 800 px au plus (sans Pillow, on la garde telle quelle)."""
+    if not img:
+        return img
+    try:
+        from PIL import Image
+    except ImportError:
+        return img
+    try:
+        im = Image.open(io.BytesIO(img))
+        if (im.format == "JPEG" and im.mode == "RGB" and max(im.size) <= COVER_MAX
+                and not im.info.get("progressive") and not im.info.get("progression")):
+            return img
+        if im.mode in ("RGBA", "LA", "P"):
+            im = im.convert("RGBA")
+            bg = Image.new("RGB", im.size, (255, 255, 255))
+            bg.paste(im, mask=im.getchannel("A"))
+            im = bg
+        else:
+            im = im.convert("RGB")
+        im.thumbnail((COVER_MAX, COVER_MAX), Image.LANCZOS)
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=90, optimize=True)
+        return out.getvalue()
+    except Exception:  # image illisible : on garde l'originale
+        return img
+
+
+def refit_embedded_cover(path: Path) -> bool:
+    """Corrige la jaquette déjà intégrée à un fichier si Rekordbox ne peut pas l'afficher."""
+    import mutagen
+    ext = path.suffix.lower()
+    try:
+        if ext in (".mp3", ".wav", ".aif", ".aiff"):
+            from mutagen.id3 import APIC, ID3
+            holder = None if ext == ".mp3" else mutagen.File(path)
+            tags = ID3(path) if holder is None else holder.tags
+            pics = tags.getall("APIC") if tags else []
+            if not pics:
+                return False
+            new = fit_cover(pics[0].data)
+            if new == pics[0].data:
+                return False
+            tags.delall("APIC")
+            tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="Cover", data=new))
+            if holder is None:
+                tags.save(path, v2_version=3)
+            else:
+                holder.save()
+        elif ext == ".flac":
+            from mutagen.flac import FLAC, Picture
+            f = FLAC(path)
+            if not f.pictures:
+                return False
+            new = fit_cover(f.pictures[0].data)
+            if new == f.pictures[0].data:
+                return False
+            f.clear_pictures()
+            p = Picture()
+            p.type, p.mime, p.desc, p.data = 3, "image/jpeg", "Cover", new
+            f.add_picture(p)
+            f.save()
+        elif ext in (".m4a", ".mp4", ".aac", ".alac"):
+            from mutagen.mp4 import MP4, MP4Cover
+            f = MP4(path)
+            covr = f.get("covr") or []
+            if not covr:
+                return False
+            new = fit_cover(bytes(covr[0]))
+            if new == bytes(covr[0]):
+                return False
+            f["covr"] = [MP4Cover(new, imageformat=MP4Cover.FORMAT_JPEG)]
+            f.save()
+        else:
+            return False
+    except Exception:  # fichier mal formé : on n'y touche pas
+        return False
+    return True
+
+
 def _get_bytes(url: str) -> bytes | None:
     if url in _cover_cache:
         return _cover_cache[url]
@@ -672,7 +757,7 @@ def find_cover(t: Track) -> bytes | None:
                                  "limit": 1}, headers=UA, timeout=20)
         res = r.json().get("results", []) if r.ok else []
         if res and res[0].get("artworkUrl100"):
-            return _get_bytes(res[0]["artworkUrl100"].replace("100x100bb", "1000x1000bb"))
+            return _get_bytes(res[0]["artworkUrl100"].replace("100x100bb", "800x800bb"))
     except (requests.RequestException, ValueError):
         pass
     return None
@@ -690,6 +775,7 @@ def write_tags(path: Path, t: Track, cover: bytes | None) -> str:
     import mutagen
     ext = path.suffix.lower()
     year = t.date[:4] if t.date else ""
+    cover = fit_cover(cover)
     try:
         if ext in (".mp3", ".wav", ".aif", ".aiff"):
             from mutagen.id3 import APIC, ID3, TALB, TDRC, TIT2, TPE1, TPE2, TRCK, ID3NoHeaderError
@@ -963,6 +1049,9 @@ def update_rekordbox_xml(xml_path: Path, name: str, tracks: list[Track]) -> None
         lists = json.loads(store.read_text("utf-8"))
     except (OSError, ValueError):
         lists = {}
+    for t in tracks:
+        if t.final_path and t.final_path.exists():
+            refit_embedded_cover(t.final_path)
     lists[name] = [{"path": str(t.final_path.resolve()), "artist": t.artist, "title": t.title,
                     "album": t.album, "time": t.duration_s, "year": t.date[:4]}
                    for t in tracks if t.final_path and t.final_path.exists()]

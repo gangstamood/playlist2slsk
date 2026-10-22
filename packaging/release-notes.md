@@ -1,7 +1,8 @@
-**Playlist2Slsk** 1.2.2.
+**Playlist2Slsk** 1.2.3.
 
 ## Nouveautés
-- Correctif : on peut de nouveau écrire et effacer dans le champ du lien, le jeton Discogs et la correction des morceaux manquants (seul le collage marchait).
+- Rekordbox : les pochettes s'affichent. Elles sont maintenant intégrées en JPEG de 800 px au plus, le format que lisent Rekordbox et les CDJ. Les morceaux déjà téléchargés sont corrigés au prochain « → Rekordbox ».
+- On peut de nouveau écrire et effacer dans le champ du lien, le jeton Discogs et la correction des morceaux manquants.
 
 Depuis la 1.2.1, clique simplement sur « Mettre à jour » dans le bandeau de l'appli.
 
