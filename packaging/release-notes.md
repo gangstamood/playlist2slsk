@@ -1,8 +1,9 @@
-**Playlist2Slsk** 1.2.3.
+**Playlist2Slsk** 1.2.4.
 
 ## Nouveautés
-- Rekordbox : les pochettes s'affichent. Elles sont maintenant intégrées en JPEG de 800 px au plus, le format que lisent Rekordbox et les CDJ. Les morceaux déjà téléchargés sont corrigés au prochain « → Rekordbox ».
-- On peut de nouveau écrire et effacer dans le champ du lien, le jeton Discogs et la correction des morceaux manquants.
+- **Tu veux juste les disques ?** Sur l'écran d'accueil, colle le lien de n'importe quelle playlist et envoie-la direct vers Discogs (wantlist) ou Bandcamp, sans rien télécharger.
+- « Signaler un problème » : le diagnostic donne la raison de chaque morceau introuvable.
+- Rekordbox : les pochettes s'affichent (JPEG de 800 px au plus). Les morceaux déjà téléchargés sont corrigés au prochain « → Rekordbox ».
 
 Depuis la 1.2.1, clique simplement sur « Mettre à jour » dans le bandeau de l'appli.
 
