@@ -75,7 +75,7 @@ button:disabled:hover { background: transparent; color: var(--text); }
 .hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
 
 /* Playlist */
-.pl-head { display: flex; gap: 22px; align-items: end; margin-bottom: 26px; }
+.pl-head { display: flex; flex-wrap: wrap; gap: 22px; align-items: end; margin-bottom: 26px; }
 .mosaic { width: 120px; height: 120px; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); flex: none; }
 .mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mosaic.one { grid-template-columns: 1fr; }
@@ -83,7 +83,8 @@ button:disabled:hover { background: transparent; color: var(--text); }
 div.art::after { font-size: 20px; }
 .pl-head h2 { margin: 0; font-size: 64px; font-weight: 900; line-height: 0.92; letter-spacing: -0.045em; overflow-wrap: anywhere; }
 .pl-head p { margin: 0 0 8px; color: var(--muted); font: 13px var(--mono); text-transform: uppercase; order: -1; }
-.pl-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pl-acts { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; justify-content: flex-end; }
+.pl-head .grow { flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; }
 .link { background: none; border: 0; color: var(--muted); padding: 6px 4px; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; text-decoration: underline; text-underline-offset: 3px; }
 .link:hover { color: var(--text); background: none; }
 
@@ -351,6 +352,33 @@ body.has-player main { padding-bottom: 130px; }
 .login-msg.ok { background: var(--accent-soft); color: var(--text); }
 .modal-box .spin { display: inline-block; vertical-align: -2px; margin-right: 8px; border-top-color: var(--bg); border-color: rgba(255,255,255,.35); border-top-color: #fff; }
 
+
+/* Discogs : wantlist */
+.dg-box { max-width: 880px; max-height: calc(100vh - 32px); grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
+.dg-top { display: flex; align-items: baseline; gap: 12px; }
+.dg-top .link { margin-left: auto; }
+.dg-prog { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.dg-prog .pb-val { min-width: 120px; }
+.dg-list { overflow-y: auto; border-top: 2px solid var(--line); margin: 0 -28px; padding: 0 28px; }
+.dg-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1.5fr); gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--hair); }
+.dg-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.dg-t { min-width: 0; display: grid; gap: 2px; }
+.dg-t b, .dg-r b { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dg-t small, .dg-r small { font: 500 11px var(--mono); text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .02em; }
+.dg-m { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: center; min-width: 0; }
+.dg-m img, .dg-m .ph { width: 56px; height: 56px; object-fit: cover; background: var(--soft); display: block; }
+.dg-r { min-width: 0; display: grid; gap: 3px; }
+.dg-r .row2 { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.dg-r select { padding: 3px 6px; font-size: 12px; max-width: 220px; }
+.dg-r a { font: 500 11px var(--mono); text-transform: uppercase; color: var(--text); white-space: nowrap; }
+.dg-state { font: 500 11.5px var(--mono); text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.dg-state .spin { display: inline-block; margin: 0; border-color: var(--hair); border-top-color: var(--accent); }
+.dg-tag { font: 500 10.5px var(--mono); text-transform: uppercase; padding: 2px 6px; background: var(--text); color: var(--bg); white-space: nowrap; }
+.dg-tag.ok { background: var(--accent); color: var(--accent-ink); }
+.dg-row.off .dg-m { opacity: .45; }
+.dg-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; }
+@media (max-width: 700px) { .dg-row { grid-template-columns: 22px minmax(0, 1fr); } .dg-row .dg-m { grid-column: 2; } }
+
 @media (max-width: 700px) {
   main { padding: 20px 16px 60px; }
   header { flex-wrap: wrap; }
@@ -442,10 +470,13 @@ body.has-player main { padding-bottom: 130px; }
       <div class="pl-head">
         <div id="mosaic" class="mosaic"></div>
         <div class="grow"><h2 id="pl-name"></h2><p id="pl-meta"></p></div>
-        <button id="pl-listen" class="primary hidden" type="button">▶ Écouter</button>
-        <button id="to-rb" class="follow-btn hidden" type="button" title="Ajouter cette playlist à Rekordbox (morceaux déjà téléchargés)">→ Rekordbox</button>
-        <button id="follow" class="follow-btn hidden" title="Retrouver cette playlist dans l'onglet Playlists et la mettre à jour en un clic">+ Suivre</button>
-        <button id="change" class="link">Changer</button>
+        <div class="pl-acts">
+          <button id="pl-listen" class="primary hidden" type="button">▶ Écouter</button>
+          <button id="to-dg" class="follow-btn" type="button" title="Retrouver les disques de cette playlist sur Discogs et les ajouter à ta wantlist">→ Discogs</button>
+          <button id="to-rb" class="follow-btn hidden" type="button" title="Ajouter cette playlist à Rekordbox (morceaux déjà téléchargés)">→ Rekordbox</button>
+          <button id="follow" class="follow-btn hidden" title="Retrouver cette playlist dans l'onglet Playlists et la mettre à jour en un clic">+ Suivre</button>
+          <button id="change" class="link">Changer</button>
+        </div>
       </div>
       <div id="tracks" class="tracks"></div>
 
@@ -705,6 +736,28 @@ body.has-player main { padding-bottom: 130px; }
     <p id="plm-text"></p>
     <div class="acts"><button id="plm-scan" class="primary" type="button">Chercher les nouveaux ajouts</button><button id="plm-open" class="btn" type="button">Ouvrir</button></div>
     <div class="acts plm-links"><button id="plm-follow" class="link" type="button"></button><button id="plm-dir" class="link" type="button">Dossier</button><button id="plm-rm" class="link" type="button">Retirer</button><button id="plm-close" class="link" type="button" style="margin-left:auto">Fermer</button></div>
+  </div>
+</div>
+<div id="dg" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="dg-title">
+  <div class="modal-box" id="dg-connect" style="max-width:520px">
+    <span class="kicker">Discogs</span>
+    <h2 id="dg-title">Ta wantlist Discogs</h2>
+    <p>Retrouve les disques de tes playlists sur Discogs et ajoute-les à ta wantlist en un clic. Rien n'est téléchargé.</p>
+    <ol class="dg-steps">
+      <li>Sur Discogs, ouvre <b>Réglages › Développeurs</b> et clique sur <b>Générer un nouveau jeton</b>. <button id="dg-dev" class="link" type="button">Ouvrir la page</button></li>
+      <li>Copie le jeton et colle-le ici.</li>
+    </ol>
+    <div><label class="lbl" for="dg-token">Jeton personnel</label><input id="dg-token" type="password" spellcheck="false" autocomplete="off"></div>
+    <div id="dg-msg" class="login-msg err hidden" role="status"></div>
+    <div class="acts"><button id="dg-save" class="primary" type="button">Connecter</button><button id="dg-close1" class="link" type="button">Fermer</button></div>
+    <p style="font-size:12.5px">Enregistré uniquement sur ton ordinateur. Tu peux le révoquer à tout moment depuis la même page Discogs.</p>
+  </div>
+  <div class="modal-box dg-box hidden" id="dg-main">
+    <div class="dg-top"><span class="kicker" id="dg-who"></span><button id="dg-out" class="link" type="button">Se déconnecter</button></div>
+    <h2 id="dg-name"></h2>
+    <div class="dg-prog"><div id="dg-bar" class="bar thin"><i></i></div><span class="pb-val" id="dg-val"></span></div>
+    <div id="dg-list" class="dg-list"></div>
+    <div class="acts"><button id="dg-add" class="primary" type="button" disabled>Ajouter à ma wantlist</button><button id="dg-close2" class="link" type="button">Fermer</button></div>
   </div>
 </div>
 <div id="rbm" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rbm-title">
@@ -1686,6 +1739,123 @@ if ("mediaSession" in navigator) {
   navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
   navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
 }
+// ---------- Discogs : retrouver les disques et remplir la wantlist ----------
+const dg = { timer: null, load: -1, rows: {}, sel: {}, added: new Set(), raw: {} };
+function dgShow(which) {
+  $("#dg").classList.remove("hidden");
+  $("#dg-connect").classList.toggle("hidden", which !== "connect");
+  $("#dg-main").classList.toggle("hidden", which !== "main");
+}
+function dgClose() { $("#dg").classList.add("hidden"); clearTimeout(dg.timer); }
+async function dgOpen() {
+  if (!tracks.length) return;
+  const s = await api("/api/discogs");
+  if (!s.connected) { $("#dg-msg").classList.add("hidden"); $("#dg-token").value = ""; dgShow("connect"); setTimeout(() => $("#dg-token").focus(), 50); return; }
+  if (s.load_id !== loadId) {
+    dg.rows = {}; dg.sel = {}; dg.raw = {}; dg.added = new Set(); $("#dg-list").innerHTML = "";
+    const r = await api("/api/discogs/match", {});
+    if (r.error) return toast(r.error);
+  }
+  $("#dg-who").textContent = "Discogs · " + s.user;
+  $("#dg-name").textContent = plName;
+  dgShow("main"); dgPoll();
+}
+async function dgPoll() {
+  clearTimeout(dg.timer);
+  const s = await api("/api/discogs");
+  if (s.load_id === loadId) dgRender(s);
+  if (s.error) toast(s.error);
+  if (s.running && !$("#dg").classList.contains("hidden")) dg.timer = setTimeout(dgPoll, 1500);
+}
+function dgRender(s) {
+  const pct = s.total ? Math.round(100 * s.done / s.total) : 0;
+  $("#dg-bar i").style.width = pct + "%";
+  const found = Object.values(s.items).filter(i => i.state === "found").length;
+  $("#dg-val").textContent = s.running ? `${s.done} / ${s.total} cherchés` : `${found} trouvés sur ${s.total}`;
+  const list = $("#dg-list");
+  for (const t of tracks) {
+    const it = s.items[t.n] || { state: "wait" }, key = JSON.stringify(it);
+    if (dg.raw[t.n] === key && dg.rows[t.n]) continue;
+    dg.raw[t.n] = key;
+    if (it.state === "found" && !dg.sel[t.n]) dg.sel[t.n] = { choice: 0, on: !it.results[0].wanted };
+    const row = dgRow(t, it);
+    if (dg.rows[t.n]) dg.rows[t.n].replaceWith(row); else list.append(row);
+    dg.rows[t.n] = row;
+  }
+  dgCount();
+}
+function dgRow(t, it) {
+  const row = el("div", { class: "dg-row" });
+  const sel = dg.sel[t.n], res = it.results || [];
+  const box = el("input", { type: "checkbox", "aria-label": "Ajouter " + t.title });
+  const head = el("div", { class: "dg-t" }, el("b", {}, t.title), el("small", {}, t.artist));
+  if (it.state !== "found") {
+    box.disabled = true;
+    const st = el("div", { class: "dg-state" });
+    if (it.state === "search") st.append(el("span", { class: "spin" }), "Recherche…");
+    else st.append(it.state === "none" ? "Pas sur Discogs" : it.state === "error" ? (it.error || "Erreur") : "En attente");
+    row.append(box, head, st); row.classList.add("off");
+    return row;
+  }
+  const r = res[sel.choice] || res[0], done = dg.added.has(r.id) || r.wanted;
+  box.checked = sel.on && !done; box.disabled = done;
+  box.onchange = () => { sel.on = box.checked; row.classList.toggle("off", !box.checked); dgCount(); };
+  const img = r.thumb ? el("img", { src: r.thumb, alt: "", loading: "lazy" }) : el("div", { class: "ph" });
+  const info = [r.label, r.catno, r.year, r.format, r.country].filter(Boolean).join(" · ");
+  const line2 = el("div", { class: "row2" });
+  if (res.length > 1) {
+    const pick = el("select", { "aria-label": "Autre sortie" });
+    res.forEach((x, i) => pick.append(el("option", { value: i }, `${x.title} · ${[x.label, x.year, x.vinyl ? "vinyle" : x.format].filter(Boolean).join(" · ")}`)));
+    pick.value = sel.choice;
+    pick.onchange = () => { sel.choice = +pick.value; const nr = dgRow(t, it); row.replaceWith(nr); dg.rows[t.n] = nr; dgCount(); };
+    line2.append(pick);
+  }
+  line2.append(el("a", { href: r.url }, "Voir"));
+  if (done) line2.append(el("span", { class: "dg-tag" + (dg.added.has(r.id) ? " ok" : "") }, dg.added.has(r.id) ? "Ajouté" : "Déjà dans ta wantlist"));
+  const rel = el("div", { class: "dg-r" }, el("b", {}, (r.artist ? r.artist + " – " : "") + r.title), el("small", {}, info), line2);
+  row.append(box, head, el("div", { class: "dg-m" }, img, rel));
+  row.classList.toggle("off", !box.checked && !done);
+  return row;
+}
+function dgChosen() {
+  const ids = [];
+  for (const [n, s] of Object.entries(dg.sel)) {
+    const it = JSON.parse(dg.raw[n] || "{}"), r = (it.results || [])[s.choice];
+    if (s.on && r && !r.wanted && !dg.added.has(r.id)) ids.push(r.id);
+  }
+  return [...new Set(ids)];
+}
+function dgCount() {
+  const n = dgChosen().length, b = $("#dg-add");
+  b.disabled = !n;
+  b.textContent = n ? `Ajouter ${n} disque${n > 1 ? "s" : ""} à ma wantlist` : "Ajouter à ma wantlist";
+}
+$("#to-dg").onclick = dgOpen;
+$("#dg-dev").onclick = () => openExt("https://www.discogs.com/settings/developers");
+$("#dg-save").onclick = async () => {
+  const b = $("#dg-save"); b.disabled = true; b.textContent = "Vérification…";
+  const r = await api("/api/discogs/token", { token: $("#dg-token").value });
+  b.disabled = false; b.textContent = "Connecter";
+  if (r.error) { $("#dg-msg").textContent = r.error; $("#dg-msg").classList.remove("hidden"); return; }
+  $("#dg-token").value = ""; dgOpen();
+};
+$("#dg-token").onkeydown = e => e.key === "Enter" && $("#dg-save").click();
+$("#dg-out").onclick = async () => { await api("/api/discogs/logout", {}); dgClose(); toast("Compte Discogs déconnecté."); };
+$("#dg-add").onclick = async () => {
+  const ids = dgChosen(); if (!ids.length) return;
+  const b = $("#dg-add"); b.disabled = true;
+  b.innerHTML = ""; b.append(el("span", { class: "spin" }), `Ajout de ${ids.length} disque${ids.length > 1 ? "s" : ""}…`);
+  const r = await api("/api/discogs/add", { ids });
+  (r.added || []).forEach(id => dg.added.add(id));
+  for (const n of Object.keys(dg.rows)) { const t = tracks.find(x => String(x.n) === n); const it = JSON.parse(dg.raw[n] || "{}"); if (t && it.state === "found") { const nr = dgRow(t, it); dg.rows[n].replaceWith(nr); dg.rows[n] = nr; } }
+  dgCount();
+  if (r.error) return toast(r.error);
+  toast(`${r.added.length} disque${r.added.length > 1 ? "s" : ""} ajouté${r.added.length > 1 ? "s" : ""} à ta wantlist Discogs.` + (r.failed.length ? ` ${r.failed.length} refusé${r.failed.length > 1 ? "s" : ""}.` : ""));
+};
+for (const id of ["#dg-close1", "#dg-close2"]) $(id).onclick = dgClose;
+$("#dg").onclick = e => { if (e.target.id === "dg") dgClose(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#dg").classList.contains("hidden")) dgClose(); });
+
 // Appli Mac : Cmd+V, Cmd+C, Cmd+X et Cmd+A passent par le presse-papiers du système (la fenêtre native les laisse parfois tomber).
 function isField(t) {
   return t && t.matches && t.matches("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea") && !t.readOnly && !t.disabled;

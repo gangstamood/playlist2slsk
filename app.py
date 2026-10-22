@@ -45,6 +45,7 @@ WIN = sys.platform == "win32"
 NOWIN = {"creationflags": 0x08000000} if WIN else {}   # CREATE_NO_WINDOW
 sys.path.insert(0, str(HERE))
 import playlist2slsk as p2s  # noqa: E402
+import discogs  # noqa: E402
 
 SCRIPT = HERE / "playlist2slsk.py"
 UI = HERE / "ui.html"
@@ -55,6 +56,8 @@ EDITS = APP_DIR / "edits.json"           # corrections manuelles {source: {clé:
 FOLLOWS = APP_DIR / "follows.json"       # playlists suivies, mises à jour à la demande
 HISTORY = APP_DIR / "history.json"       # playlists déjà chargées, les plus récentes d'abord
 DIRS = APP_DIR / "dirs.json"             # dossier choisi pour une playlist précise (source → chemin)
+DG_ACCOUNT = discogs.Account(APP_DIR / "discogs.json")   # jeton personnel Discogs, lisible par toi seul
+DG = discogs.Matcher(DG_ACCOUNT)
 SPOTIFY_TOKEN = APP_DIR / "spotify.json"  # connexion Spotify (jetons OAuth), lisible par toi seul
 PORT = int(os.environ.get("P2S_PORT", "8765"))
 DOWNLOADS = Path(os.environ.get("P2S_DOWNLOADS", str(Path.home() / "Downloads")))
@@ -1345,6 +1348,14 @@ def open_url(url: str) -> dict:
     return {"ok": True}
 
 
+def discogs_match() -> dict:
+    with S.lock:
+        tracks, load_id = list(S.tracks), S.load_id
+    if not tracks:
+        return {"error": "Charge d'abord une playlist."}
+    return DG.start(load_id, tracks)
+
+
 def info() -> dict:
     s = load_settings()
     conf = read_conf()
@@ -1485,6 +1496,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(check_update(force=bool(parse_qs(u.query).get("force"))))
         elif u.path == "/api/diag":
             self._json(diagnostic())
+        elif u.path == "/api/discogs":
+            self._json({**DG_ACCOUNT.public(), **DG.status()})
         elif u.path == "/api/busy":
             self._json({"busy": bool(S.running or SYNC["active"])})
         elif u.path == "/api/status":
@@ -1567,6 +1580,10 @@ class Handler(BaseHTTPRequestHandler):
             "/api/spotify/login": spotify_login,
             "/api/spotify/logout": spotify_logout,
             "/api/sync": lambda: sync_follows(body),
+            "/api/discogs/token": lambda: DG_ACCOUNT.connect(body.get("token", "")),
+            "/api/discogs/logout": DG_ACCOUNT.logout,
+            "/api/discogs/match": discogs_match,
+            "/api/discogs/add": lambda: DG.add(body.get("ids") or []),
         }
         fn = routes.get(urlparse(self.path).path)
         if not fn:
