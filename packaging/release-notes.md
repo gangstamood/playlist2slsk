@@ -1,4 +1,4 @@
-**Playlist2Slsk** 1.2.0 (version de test).
+**Playlist2Slsk** 1.2.1.
 
 ## Nouveautés
 - **→ Discogs** : retrouve les disques d'une playlist sur Discogs (vinyle d'abord) et ajoute-les à ta wantlist en un clic. Il suffit de coller une fois ton jeton personnel Discogs.
