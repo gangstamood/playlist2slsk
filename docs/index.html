@@ -110,6 +110,15 @@ section.band > .wrap { padding-block: 64px; }
 .cover.ink .cat { background: var(--accent); color: var(--accent-ink); }
 .feat p { color: var(--muted); font-size: 15px; }
 
+/* Du son au disque */
+.buy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: start; }
+.buy-txt { display: grid; gap: 34px; }
+.buy-item { display: flex; flex-direction: column; gap: 10px; }
+.buy-item h3 { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
+.buy-item p { color: var(--muted); font-size: 16px; }
+.tag { align-self: flex-start; font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; background: var(--accent); color: var(--accent-ink); padding: 4px 9px; }
+@media (max-width: 920px) { .buy { grid-template-columns: 1fr; } }
+
 /* Captures */
 .shots { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; align-items: start; }
 .shots .col { display: grid; gap: 22px; }
@@ -180,6 +189,7 @@ footer.end b { color: var(--text); }
     </a>
     <nav class="links" aria-label="Sections">
       <a href="#fonctions">Fonctions</a>
+      <a href="#acheter">Acheter</a>
       <a href="#installer">Installer</a>
       <a href="#credits">Crédits</a>
     </nav>
@@ -260,6 +270,33 @@ footer.end b { color: var(--text); }
     </div>
   </section>
 
+  <section class="band" id="acheter" aria-labelledby="h-buy">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-buy">Du son au disque.</h2>
+        <p>Une playlist, c'est aussi une liste d'achats. Sans rien télécharger, l'appli retrouve tes morceaux là où on les achète.</p>
+      </div>
+      <div class="buy">
+        <div class="buy-txt">
+          <div class="buy-item">
+            <span class="tag">→ Discogs</span>
+            <h3>Ta wantlist remplie en un clic</h3>
+            <p>Chaque morceau est cherché dans la base Discogs, vinyle d'abord. Tu vérifies le pressage proposé (label, référence, année), tu en choisis un autre si besoin, tu décoches ce qui ne va pas, et tout part dans ta wantlist. Il suffit de coller une fois ton jeton personnel Discogs.</p>
+          </div>
+          <div class="buy-item">
+            <span class="tag">→ Bandcamp</span>
+            <h3>Les pages des artistes, prêtes à ouvrir</h3>
+            <p>L'appli retrouve chaque morceau sur Bandcamp et ouvre les pages dans ton navigateur : le cœur pour ta wishlist, ou « Acheter » pour soutenir l'artiste directement.</p>
+          </div>
+        </div>
+        <figure>
+          <img src="img/discogs.jpg" alt="Fenêtre Discogs : les 8 morceaux d'une playlist avec le vinyle trouvé pour chacun (pochette, label, référence, année), 7 trouvés, un déjà dans la wantlist, bouton Ajouter 6 disques à ma wantlist" loading="lazy" width="880" height="952">
+          <figcaption><b>→ Discogs.</b> Le pressage proposé pour chaque morceau, ce qui est déjà dans ta wantlist, et un seul bouton pour le reste.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
   <section class="band" aria-labelledby="h-shots">
     <div class="wrap">
       <div class="sec-head">
@@ -317,6 +354,10 @@ footer.end b { color: var(--text); }
         <h3>Au premier lancement : ton compte Soulseek</h3>
         <p style="margin-top:6px">Pas de compte ? Invente un identifiant et un mot de passe, Soulseek le crée tout seul. Note-les bien. Si tu utilises déjà Soulseek ailleurs (Nicotine+…), prends un compte à part.</p>
       </div>
+      <div class="note">
+        <h3>Ensuite, plus rien à télécharger</h3>
+        <p style="margin-top:6px">Quand une nouvelle version sort, un bandeau apparaît dans l'appli : clique sur « Mettre à jour », elle s'installe et se relance toute seule. Sur Mac, garde l'appli dans le dossier Applications pour que ça marche.</p>
+      </div>
     </div>
   </section>
 
@@ -326,11 +367,11 @@ footer.end b { color: var(--text); }
       <div class="faq">
         <div><h3>Soulseek, c'est quoi ?</h3><p>Un réseau de partage de musique né en 2000, très riche en sons rares, pressages vinyle et FLAC. Les fichiers viennent des autres utilisateurs.</p></div>
         <div><h3>Joue le jeu du réseau</h3><p>Playlist2Slsk télécharge mais ne partage pas. Pour rendre la pareille, partage ta collection avec un vrai client comme Nicotine+.</p></div>
-        <div><h3>Et côté légal ?</h3><p>Télécharger de la musique protégée que tu n'as pas achetée reste de la contrefaçon en France. Le bouton Bandcamp mène à la page de l'artiste pour l'acheter.</p></div>
+        <div><h3>Et côté légal ?</h3><p>Télécharger de la musique protégée que tu n'as pas achetée reste de la contrefaçon en France. Les boutons Bandcamp et Discogs mènent aux disques pour les acheter.</p></div>
       </div>
       <div class="note">
         <h3>Soutiens les artistes</h3>
-        <p style="margin-top:6px">Playlist2Slsk est un outil pour organiser ta propre musique : des morceaux que tu possèdes ou que tu as le droit de télécharger. Si un titre tourne dans tes sets, achète-le, sur Bandcamp ou ailleurs. Playlist2Slsk est un projet indépendant, sans lien avec Spotify, Deezer, YouTube, SoundCloud, Bandcamp, Soulseek, Native Instruments (Traktor) ou AlphaTheta (Rekordbox) ; ces noms ne servent qu'à indiquer la compatibilité.</p>
+        <p style="margin-top:6px">Playlist2Slsk est un outil pour organiser ta propre musique : des morceaux que tu possèdes ou que tu as le droit de télécharger. Si un titre tourne dans tes sets, achète-le, sur Bandcamp ou ailleurs. Playlist2Slsk est un projet indépendant, sans lien avec Spotify, Deezer, YouTube, SoundCloud, Bandcamp, Discogs, Soulseek, Native Instruments (Traktor) ou AlphaTheta (Rekordbox) ; ces noms ne servent qu'à indiquer la compatibilité.</p>
       </div>
     </div>
   </section>
@@ -348,6 +389,7 @@ footer.end b { color: var(--text); }
         <li><span>Tags et pochettes</span><span><a href="https://github.com/quodlibet/mutagen" rel="noopener">mutagen</a>, pochettes Spotify et iTunes</span></li>
         <li><span>Analyse des FLAC</span><span>NumPy, soundfile</span></li>
         <li><span>Appli de bureau</span><span>pywebview, PyInstaller, Inno Setup</span></li>
+        <li><span>Disques</span><span>Données fournies par <a href="https://www.discogs.com" rel="noopener">Discogs</a></span></li>
         <li><span>Export Spotify</span><span><a href="https://exportify.app" rel="noopener">Exportify</a></span></li>
         <li><span>Typographie</span><span>Archivo, IBM Plex Mono</span></li>
       </ul>
