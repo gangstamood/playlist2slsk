@@ -346,6 +346,7 @@ class State:
         self.started = 0.0
         self.exports: dict[str, str] = {}   # traktor|rekordbox → fichier écrit
         self.jobs: dict[str, int] = {}      # jobId sockseek → position (download_progress ne donne que le jobId)
+        self.events: list[dict] = []        # derniers évènements sockseek marquants, pour le diagnostic
 
 
 S = State()
@@ -842,9 +843,15 @@ def _sample(ev: dict) -> None:
         pass
 
 
+_ROUTINE = ("download_progress", "search_start", "download_start")
+
+
 def _on_event(ev: dict) -> None:
     _sample(ev)
     kind, data = ev.get("type"), ev.get("data") or {}
+    if kind not in _ROUTINE and not (kind == "track_state" and data.get("terminalOutcome") in (None, "None")):
+        S.events.append(ev)
+        del S.events[:-25]
     pos = _find_pos(data) if data.get("artist") or data.get("downloadPath") else S.jobs.get(str(data.get("jobId")))
     if pos is None and kind == "download_progress":
         # 1er message d'un transfert : on le rattache au morceau dont le fichier a exactement cette taille
@@ -1451,6 +1458,17 @@ def diagnostic() -> dict:
         counts: dict = {}
         for st in S.status.values():
             counts[st] = counts.get(st, 0) + 1
+        misses = []
+        for t in S.tracks:
+            if S.status.get(t.position) != "miss":
+                continue
+            d = S.details.get(t.position) or {}
+            misses.append(f"  {t.position}. {t.artist} — {t.title} : {d.get('reason') or 'raison inconnue'}"
+                          f" · {d.get('results', '?')} résultats · {d.get('locked', 0)} verrouillés")
+        events = []
+        for ev in S.events:
+            data = {k: v for k, v in (ev.get("data") or {}).items() if "user" not in k.lower()}   # pas de pseudos
+            events.append("  " + json.dumps({"type": ev.get("type"), "data": data}, ensure_ascii=False)[:400])
     home = str(Path.home())
     text = "\n".join([
         f"Playlist2Slsk {VERSION} · {platform.platform(terse=True)} · Python {platform.python_version()}"
@@ -1458,6 +1476,9 @@ def diagnostic() -> dict:
         f"sockseek : {'trouvé' if bin_path else 'introuvable'} · --progress-json : {bool(bin_path) and progress_json_supported(bin_path)}",
         f"Dernier lot : {counts or 'aucun'}",
         "Réglages : " + json.dumps(keep, ensure_ascii=False),
+        f"Code de sortie du lot : {S.rc if S.rc is not None else '—'}",
+        "", "Introuvables :", *(misses or ["  aucun"]),
+        "", "Derniers évènements sockseek :", *(events or ["  aucun"]),
         "", "Fin du journal :", *lines,
     ]).replace(home, "~")
     user = read_conf().get("username")
