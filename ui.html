@@ -1123,7 +1123,7 @@ $("#url-go").onclick = async () => {
   $("#url-go").disabled = false; $("#url-go").textContent = "Charger";
   loaded(r);
 };
-$("#url").onkeydown = e => e.key === "Enter" && $("#url-go").click();
+$("#url").onkeydown = e => { if (e.key === "Enter") $("#url-go").click(); };
 
 // ---------- Choix de la source ----------
 const SOURCES = {
@@ -1497,7 +1497,7 @@ function fixEditor(t) {
     start({ only: [t.n], ...(wide.checked ? { match: "wide" } : {}) });
   };
   go.onclick = submit;
-  for (const i of [artist, title]) i.onkeydown = e => e.key === "Enter" && submit();
+  for (const i of [artist, title]) i.onkeydown = e => { if (e.key === "Enter") submit(); };
   setTimeout(() => { title.focus(); box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, 0);
   return box;
 }
@@ -1876,7 +1876,7 @@ $("#dg-save").onclick = async () => {
   if (r.error) { $("#dg-msg").textContent = r.error; $("#dg-msg").classList.remove("hidden"); return; }
   $("#dg-token").value = ""; dgOpen();
 };
-$("#dg-token").onkeydown = e => e.key === "Enter" && $("#dg-save").click();
+$("#dg-token").onkeydown = e => { if (e.key === "Enter") $("#dg-save").click(); };
 $("#dg-out").onclick = async () => { await api("/api/discogs/logout", {}); dgClose(); toast("Compte Discogs déconnecté."); };
 $("#dg-add").onclick = async () => {
   const ids = dgChosen(); if (!ids.length) return;

@@ -1,10 +1,9 @@
-**Playlist2Slsk** 1.2.1.
+**Playlist2Slsk** 1.2.2.
 
 ## Nouveautés
-- **→ Discogs** : retrouve les disques d'une playlist sur Discogs (vinyle d'abord) et ajoute-les à ta wantlist en un clic. Il suffit de coller une fois ton jeton personnel Discogs.
-- **→ Bandcamp** : retrouve chaque morceau sur Bandcamp et ouvre les pages pour l'ajouter à ta wishlist ou l'acheter.
-- Appli Mac : Cmd+V, Cmd+C, Cmd+X et Cmd+A marchent dans tous les champs.
-- **Mise à jour en un clic** : quand une nouvelle version sort, le bouton « Mettre à jour » du bandeau l'installe et relance l'appli. Plus besoin de repasser par GitHub.
+- Correctif : on peut de nouveau écrire et effacer dans le champ du lien, le jeton Discogs et la correction des morceaux manquants (seul le collage marchait).
+
+Depuis la 1.2.1, clique simplement sur « Mettre à jour » dans le bandeau de l'appli.
 
 Si tu as déjà Playlist2Slsk, installe simplement celle-ci par-dessus : tes réglages et tes playlists sont conservés.
 
